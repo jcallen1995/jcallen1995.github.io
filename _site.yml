@@ -1,0 +1,17 @@
+name: "jcallen1995.github.io"
+output_dir: "."     #Where the html files knit to
+navbar:
+  title: "Geospatial Projects"
+  left:
+    - text: "Home"
+      icon: fa-home
+      href: index.html    #href means hyperlink reference
+    - text: "GIS work"
+      icon: fa-globe
+      href: geog13.html
+  right:
+    - icon: fa-github
+      href: https://github.com/jcallen1995
+output:
+  html_document:
+    theme: simplex
