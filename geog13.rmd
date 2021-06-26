@@ -2,12 +2,12 @@
 title: "Projects"
 ---
 
-
 I am currently taking a GIS course based in R. I will be adding links to the various projects I complete in the course here.
 
-# [Building a project website.](https://mikejohnson51.github.io/spds/lab-01.html)
+# [<i class="fas fa-book"></i> Building a project website. June 25, 2021](https://mikejohnson51.github.io/spds/lab-01.html)
 ![](./img/my-website-screenshot.png){width=20%}
 
+- Geography 13 course assignment
 - In this assignment we built a static users site with Github Pages 
 - Includes a github repo for access to all the code.
 - The final step was publishing the site.

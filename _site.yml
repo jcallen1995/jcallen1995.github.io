@@ -9,6 +9,9 @@ navbar:
     - text: "GIS work"
       icon: fa-globe
       href: geog13.html
+    - text: "CV"
+      icon: fa-address-card
+      href: JasonAllen.html
   right:
     - icon: fa-github
       href: https://github.com/jcallen1995
