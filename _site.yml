@@ -9,6 +9,9 @@ navbar:
     - text: "GIS work"
       icon: fa-globe
       href: geog13.html
+    - text: "Sonoma County Internship"
+      icon: fa-university
+      href: sonoma_county.html
     - text: "CV"
       icon: fa-address-card
       href: JasonAllen.html
