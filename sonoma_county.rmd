@@ -6,6 +6,19 @@ title: "Internship"
 
 ### [![](./img/arcgis-logo-1.png){width=20%}](https://www.arcgis.com/index.html) [Arc GIS Online Profile](https://ucsb.maps.arcgis.com/home/user.html)  
   
+<br>  
+
+----  
+
+**July, 2021**
+
+[![](./img/ArcGIS-Capture/coyote-capture.png){width=30%}](https://ucsb.maps.arcgis.com/apps/instant/minimalist/index.html?appid=1dbf27b5c8c346f9a511ebbb3db156fe)  
+
+### [ArcGIS Online Module 4: Coyote Sightings](https://ucsb.maps.arcgis.com/apps/instant/minimalist/index.html?appid=1dbf27b5c8c346f9a511ebbb3db156fe)
+  
+*Interactive map showing coyote spottings that can be edited by the public.*
+  
+<br><br>
   
 ----  
   
@@ -19,6 +32,9 @@ title: "Internship"
   
 *Using census data to find large groupings of children under 14 in low income households.*  
   
+<br><br>  
+
+
 ----  
   
 **July, 2021**  
@@ -28,6 +44,9 @@ title: "Internship"
   
 ### [ArcGIS Online Module 2: Research Story Map](https://arcg.is/1Xu8Xu0)  
 *There were issues with the storymaps example so I was unable to fully replicate it, I did however manage to try out all of the techniques.*
+  
+<br><br>  
+  
   
 ----  
 **July, 2021**  
