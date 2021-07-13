@@ -1,0 +1,15 @@
+---
+title: "Python API Experiment"
+---
+
+This is meant to be a little experiment to test out if I can use ESRI python API in rmarkdown.
+I need to install ArcGIS Pro first.
+
+
+```{python}
+
+
+
+
+
+```

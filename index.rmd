@@ -11,7 +11,7 @@ title: "About me"
 </center>
 
 <center>
-I am a student at University of California Santa Barbara currently switching to the Geography major. I have worked on a number of projects at university including the [NASA Big Idea Challenge 2021](http://bigidea.nianet.org/2021-challenge/) recently where I help with research and graphics.
+I am a student at University of California Santa Barbara currently switching to the Geography major. I have worked on a number of projects at university including the [NASA Big Idea Challenge 2021](http://bigidea.nianet.org/2021-challenge/) recently where I helped with research and graphics.
 
 This website will be a showcase of my work with geospatial analysis over the course of my time at UCSB.
 </center>

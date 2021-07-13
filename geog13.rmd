@@ -2,7 +2,27 @@
 title: "Projects"
 ---
 
-I am currently taking a GIS course based in R. I will be adding links to the various projects I complete in the course here.
+I am currently taking a GIS course based in R. I will be adding links to the various projects I complete in the course here.  
+
+<br><br><br><br>  
+ 
+****  
+
+<br>
+
+
+# [<i class="fas fa-book"></i> Data Wrangling COVID 19](./geog13/docs/lab-02.html)
+![](./geog13/img/lab-2-cap.png){width=20%}  
+
+#### This assignment pushed us to utilize the new data manipulation skills we learned
+#### in order to analyze the NY Times COVID current data set.
+
+
+<br><br><br><br>  
+ 
+****  
+
+<br>
 
 # [<i class="fas fa-book"></i> Building a project website. June 25, 2021](https://mikejohnson51.github.io/spds/lab-01.html)
 ![](./img/my-website-screenshot.png){width=20%}

@@ -1,0 +1,284 @@
+---
+title: "Geography 13"
+author: "[Jason Allen](https://jcallen1995.github.io/)"
+subtitle: "Lab 02: COVID-19 Pandemic"
+output:
+  html_document:
+    code_folding: 'hide'
+    theme: journal
+
+---
+
+```{r, echo=TRUE, include=FALSE} 
+#this code chunk is for setting up the necessary data and variables
+library(tidyverse)
+library(knitr)
+library(readxl)
+library(zoo)
+library(kableExtra)
+library(readr)
+library(maps)
+url <- "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"
+COVID <- read_csv(url)
+target_state <- "California"
+#for reading in population data from a file in data
+#so, because the current working directory of this chunk is the /docs folder
+#I have to establish an absolute path since the pop estimate is in the data
+#folder which is in a different folder in geog-13-labs
+Population_Estimates = read_excel("../data/PopulationEstimates.xls")
+#selection of state for question 2
+facet_states = c("New York", "California", "Louisiana", "Florida")
+
+
+
+```
+
+
+```{r, echo=TRUE, include=FALSE}
+#this code chunk is for filtering our raw data into a usable manner
+Analyzed_Data <- COVID %>% 
+  filter(state == target_state) %>% 
+  group_by(county) %>% 
+  mutate(new_cases = cases - lag(cases)) %>% 
+  ungroup()
+Daily_Data <- Analyzed_Data %>% 
+  filter(date == max(date))
+```
+
+```{r, echo=TRUE}
+#This code chunk is for making and displaying knitr tables
+Most_County_Cum_Cases <- Daily_Data %>% 
+  slice_max(cases, n = 5) %>% 
+  select(county, cases)
+Most_County_Daily_Cases <- Daily_Data %>% 
+  slice_max(new_cases, n = 5) %>% 
+  filter(new_cases > 0) %>% 
+  arrange(-new_cases) %>%
+  select(county, new_cases)
+print_cum <- Most_County_Cum_Cases %>% #print a nice table for daily, cumulative cases
+  kable(col.names = c("County", "Cases"),
+        caption = "Daily Cumulative Cases",
+        format.args = list(big.mark = ',')) %>% 
+  kable_styling("striped", full_width = TRUE, font_size = 16)
+(print_cum)
+print_daily <- Most_County_Daily_Cases %>% #print a nice table for daily cases
+  kable(col.names = c("County", "Cases"),
+        caption = "Daily Cases",
+        format.args = list(big.mark = ',')) %>% 
+  kable_styling("striped", full_width = TRUE, font_size = 16)
+(print_daily)
+```
+
+```{r, echo=TRUE, include=FALSE}
+#new code chunk to join the population estimate table to the covid data
+#rename the insane paragraph long fips column name
+names(Population_Estimates)[1] <- "fips"
+#join pop estimates and daily data based on fips number
+Cum_Cases_Per_Cap <- Analyzed_Data %>% 
+  filter(date == max(date)) %>% 
+  left_join(Population_Estimates, by = c("fips" = "fips")) %>% 
+  #add a cases per capita column by dividing cases by population in 2019 census
+  mutate(cum_cases_per_cap = cases / as.numeric(...20)) %>% 
+  slice_max(cum_cases_per_cap, n = 5) %>% 
+  select(county, cum_cases_per_cap)
+#join pop estimates and daily data based on fips number
+New_Cases_Per_Cap <- Daily_Data %>% 
+  left_join(Population_Estimates, by = c("fips" = "fips")) %>% 
+  #add a cases per capita column by dividing cases by population in 2019 census
+  mutate(new_cases_per_cap = new_cases / as.numeric(...20)) %>% 
+  slice_max(new_cases_per_cap, n = 5) %>% 
+  select(county, new_cases_per_cap)
+```
+
+
+
+```{r, echo=TRUE, message=FALSE}
+#this code chunk if for getting the last 14 days average
+Average_14_Day <- Analyzed_Data %>% 
+  left_join(Population_Estimates, by = c("fips" = "fips")) %>% 
+  filter(date > max(date) - 14) %>% 
+  group_by(state, date) %>% 
+  summarize(total_cases_per_100k = sum(cases, na.rm = TRUE) / sum(as.numeric(...20), na.rm = TRUE) * 100000) %>% 
+  ungroup() %>% 
+  group_by(state) %>% 
+  summarize(total_14_day_average = sum(total_cases_per_100k / 14))
+print_avg <- Average_14_Day %>% 
+  kable(col.names = c("State", "Cases Per 100k"),
+        caption = "Last 14 day average of cases per 100,000 people") %>% 
+  kable_material_dark() %>% 
+  kable_styling(full_width = FALSE, font_size = 20, position = "left")
+(print_avg)
+```
+
+
+```{r, echo=TRUE, include=FALSE}
+#calculating the variables needed for the report
+#total cumulative cases
+total_state_cases <- Daily_Data %>% 
+  group_by(state) %>% 
+  summarise(total = sum(cases, na.rm = TRUE)) %>% 
+  ungroup()
+total_cases = as.numeric(total_state_cases[2])
+#total new cases
+total_new_state_cases <- Daily_Data %>% 
+  group_by(state) %>% 
+  summarise(total = sum(new_cases, na.rm = TRUE)) %>% 
+  ungroup()
+total_new_cases = as.numeric(total_new_state_cases[2])
+#for printing the current date
+recent_date <- as.Date(Daily_Data$date[1])
+#cast as character cause rmarkdown prints numerics in scientific notation
+tot_cases = as.character(total_cases)
+#total safe counties
+#redo the whole average 14 day calculation without summarizing to state
+Average_14_Day_County <- Analyzed_Data %>% 
+  left_join(Population_Estimates, by = c("fips" = "fips")) %>% 
+  filter(date > max(date) - 14) %>% 
+  group_by(county, date) %>% 
+  summarize(total_cases_per_100k_county = sum(new_cases, na.rm = TRUE) / sum(as.numeric(...20), na.rm = TRUE) * 100000) %>% 
+  ungroup() %>% 
+  group_by(county) %>% 
+  summarize(total_14_day_average_county = sum(total_cases_per_100k_county / 14)) %>% 
+  ungroup() %>% 
+  filter(total_14_day_average_county < 100)
+#number of safe counties
+safe_counties = nrow(Average_14_Day_County)
+```
+
+****
+
+<br><br>
+
+
+# The total number of cases in `r (target_state)`is `r (tot_cases)` on `r (recent_date)`.    
+# The total number of new cases on `r (recent_date)` is `r (total_new_cases)`.  
+# The total number of safe counties in `r (target_state)` is `r (safe_counties)`.  
+  
+****
+<br><br>
+  
+#### Now let's look at 4 states comparing new cases.
+
+```{r, echo=TRUE, include=FALSE, message=FALSE}
+#group by state and select specific states
+New_State_Cases <- COVID %>% 
+  filter(state == c(facet_states)) %>% 
+  filter(county != "Unknown") %>% 
+  group_by(fips) %>% 
+  mutate(new_cases = cases - lag(cases)) %>% 
+  ungroup() %>% 
+  filter(new_cases != "NA") %>% 
+  group_by(state, date) %>% 
+  summarise(total_daily_state_cases = sum(new_cases)) %>% 
+  ungroup() %>% 
+  mutate(roll_7 = rollmean(total_daily_state_cases, 7,fill = NA, align = "right")) %>% 
+  filter(roll_7 != "NA") 
+```
+
+```{r, echo=TRUE, message=FALSE}
+#this chunk if for ggplotting the first set of facets
+New_State_Cases %>% 
+  ggplot(aes(x = date, y = roll_7))+
+  geom_col(col = "red")+
+  facet_wrap(~state)+
+  labs(title = "State Daily COVID Cases",
+       x = "Date",
+       y = "Cases",
+       subtitle = "Data from NY Times COVID cumulative count")
+```
+  
+****  
+<br> 
+
+### This can be misleading, so let's look at the data when ajusted by total population.
+
+```{r echo=TRUE, message=FALSE, results='hide', warning=FALSE}
+#redo new state case and plot without doing the roll 7
+New_State_Cases_Per_Cap <- COVID %>% 
+  filter(state == c(facet_states)) %>% 
+  filter(county != "Unknown") %>% 
+  group_by(fips) %>% 
+  mutate(new_cases = cases - lag(cases)) %>% 
+  ungroup() %>% 
+  filter(new_cases != "NA") %>% 
+  group_by(state, date) %>% 
+  summarise(total_daily_state_cases = sum(new_cases)) %>% 
+  ungroup()
+Manip_Pop_Raw <- Population_Estimates %>% 
+  right_join(New_State_Cases_Per_Cap, by = c("...3" = "state")) %>% 
+  filter(total_daily_state_cases != "NA") %>% 
+  select(date, ...3, total_daily_state_cases, ...20) %>% 
+  mutate(avg_per_cap = total_daily_state_cases / as.numeric(...20)) %>% 
+  ggplot(aes(x = date, y = avg_per_cap))+
+  geom_col(col = "gold")+
+  facet_wrap(~...3)+
+  labs(title = "State Daily COVID Cases Per Capita",
+       x = "Date",
+       y = "Cases Per Cap",
+       subtitle = "Data from NY Times COVID cumulative count")
+(Manip_Pop_Raw)
+  
+```
+<br><br>  
+  
+#### This is helpful, but finding the 7 day average will be more comparable to our previous plot.
+
+```{r, eval=TRUE, echo=TRUE, message=FALSE}
+#this code chunk is about doin stuff with the population and what now. per kappita, im tired
+#let's manipulate population estimate first
+Manip_Pop <- Population_Estimates %>% 
+  right_join(New_State_Cases, by = c("...3" = "state")) %>% 
+  filter(roll_7 != "NA") %>% 
+  select(date, ...3, roll_7, ...20) %>% 
+  mutate(avg_per_cap = roll_7 / as.numeric(...20)) %>% 
+  ggplot(aes(x = date, y = avg_per_cap))+
+  geom_col(col = "gold")+
+  facet_wrap(~...3)+
+  labs(title = "State Daily COVID Cases Per 7 Day Average Capita",
+       x = "Date",
+       y = "Cases Per Cap Avg",
+       subtitle = "Data from NY Times COVID cumulative count")
+(Manip_Pop)
+  
+```
+<br><br>  
+  
+### As can be seen through this second plot what takes into account the number of cases
+### in relation to the total population, the rates are much more comparable.  
+ 
+****
+  
+  
+<br><br><br>  
+  
+## This plot is for the weighted average of COVID cases across the US.
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#Extra credit attempt: weighted mean center
+#import spatial data
+County_Centroids <- read_csv("../data/county-centroids.csv")
+#Start by adding geospatial data to covid data via fips
+Geo_COVID_Data <- COVID %>% 
+  left_join(County_Centroids, by = c("fips" = "fips")) %>% 
+  filter(LON != "NA") %>% 
+  filter(county != "Unknown") %>% 
+  group_by(date) %>% 
+  summarise(weighted_mean_X = sum(LON * cases, na.rm = TRUE) / sum(cases, na.rm = TRUE), 
+            weighted_mean_Y = sum(LAT * cases, na.rm = TRUE) / sum(cases, na.rm = TRUE),
+            daily_cases_total = sum(cases, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  mutate(m = as.factor(format(date, "%m")))
+
+ggplot() +
+  borders("state", fill = "gray90", colour = "white") +
+  geom_point(data = Geo_COVID_Data, aes(x = weighted_mean_X, y = weighted_mean_Y, col = m, size = daily_cases_total))+
+  labs(title = "Weighted Mean of US COVID Cases",
+     x = "Longitude",
+     y = "Latitude",
+     subtitle = "US Boundaries Data",
+     color = "Month",
+     size = "Cases")
+  
+
+```
+  
+  
