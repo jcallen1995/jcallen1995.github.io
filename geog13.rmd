@@ -2,7 +2,7 @@
 title: "Projects"
 ---
 
-I am currently taking a GIS course based in R. I will be adding links to the various projects I complete in the course here.  
+These are some of the coding projects I completed as part of my Programming for GIS course.
 
 
 <br><br><br><br>  
