@@ -1,0 +1,309 @@
+---
+title: "Geography 13"
+author: "[Jason Allen](https://jcallen1995.github.io/)"
+subtitle: 'Lab 03: Distances and the Border Zone'
+output:
+  html_document:
+    code_folding: 'hide'
+    theme: journal
+---
+
+```{r, include=FALSE}
+#Lets start by declaring some stuff
+
+# SPDS
+library(tidyverse)
+library(sf)
+library(units)
+
+# Data
+library(USAboundaries)
+library(rnaturalearth)
+
+# Visualization
+library(gghighlight)
+library(ggrepel)
+library(knitr)
+library(kableExtra)
+
+#Distance preserving projected coord system
+eqdc <- '+proj=eqdc +lat_0=40 +lon_0=-96 +lat_1=20 +lat_2=60 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs'
+
+#read in cities csv data from relative file path
+us_cities_data <- "../data/uscities.csv"
+
+#This function will return the usa boundaries states that are in the conus
+JCA_US_States_Conus <- function(data, var){
+  filter(data, !(get(var) %in% c( "Alaska", "American Samoa", "Guam", "Hawaii", "Puerto Rico", "Virgin Islands")))
+}
+
+
+#function to print the top number in an sf column nicely
+JCA_print_top_table <- function(sf_data, sf_max_col, sf_column_names, new_column_names, number_of_rows = 5, title = "Table"){
+  sf_data %>% 
+    st_drop_geometry() %>% 
+    select(sf_column_names) %>% 
+    slice_max(get(sf_max_col), n = number_of_rows) %>% 
+    kable(col.names = new_column_names) %>% 
+    kable_material_dark(c("striped", "hover")) %>% 
+    kable_styling(repeat_header_text = "Title") %>% 
+    add_header_above(c(title ,"", ""))
+}
+
+#Print function
+
+JCA_plot_sf_point_var_firefly <- function(sf_base_poly, sf_point_data, slice_var_name, lab_name, title_for_plot, subtitle_for_plot, slice_number = 5, legend_show = "hide", screen_points = "FALSE", highlight_value = 0){
+  ggplot()+
+  geom_sf(data = sf_base_poly, fill = "#454742", col = "#8d8c8b", size = .5)+
+  geom_sf(data = sf_point_data, size=.001, aes(color = drop_units(get(slice_var_name)), alpha = .8))+
+  scale_color_gradient(low = "#099bc4", high = "#47e88c")+
+  geom_sf(data = slice_max(sf_point_data, get(slice_var_name), n = slice_number), size = .5, color = "#eef7f2")+    ggrepel::geom_label_repel(data = slice_max(sf_point_data, get(slice_var_name), n = slice_number),
+                            aes(label = get(lab_name), geometry = geometry),
+                            stat = "sf_coordinates",
+                            size = 3,
+                            color = "white",
+                            fill = "#454742")+
+  theme(panel.background = element_rect(fill = "#272727",
+                                        colour = "#272727",
+                                        size = .5,
+                                        linetype = "dashed"),
+        panel.grid.major = element_line(size = .5,
+                                        color = "#3d3d3d",
+                                        linetype = "solid"))+
+  theme(legend.position = legend_show)+
+    labs(title = title_for_plot,
+         subtitle = subtitle_for_plot,
+         x = "",
+         y ="")+
+  if(screen_points){gghighlight(get(slice_var_name) > highlight_value)}
+    
+}
+
+```
+
+<br><br>  
+
+The purpose of this lab is to get acquainted with using gghighlight and creating functions to further automate the processes we're building.
+
+<br>
+
+  
+To start out, I'll be changing the data I'm using to North American Equidistant Conic. This will be helpful in preserving the distance between the cities and borders so my measurements are accurate. Additionally, since I'm only dealing with cities in the contiguous United States, a conic projection of North America will be more than adequate for my measurements.
+
+
+```{r, include=FALSE}
+
+Conus_States <- st_transform(JCA_US_States_Conus(USAboundaries::us_states(resolution = "low"), "name"), crs = eqdc)
+
+Can_Mex_Borders <- st_transform(filter(st_as_sf(countries110), admin %in% c("Canada", "Mexico")), crs = eqdc)
+
+US_Conus_Cities <- JCA_US_States_Conus(st_transform(st_as_sf(read_csv(us_cities_data), coords = c("lng", "lat"), crs = 4326), crs = eqdc), "state_name")
+
+
+```
+
+<br><br>
+
+Now it's time to start measuring the distances to national, state, and Canade/Mexico borders.
+
+```{r, warning=FALSE, message=FALSE}
+National_Border <- st_cast(st_union(Conus_States), "MULTILINESTRING")
+State_Border <- st_cast(st_combine(Conus_States), "MULTILINESTRING")
+Mexico_Border <- st_cast(filter(Can_Mex_Borders, admin == "Mexico"),"MULTILINESTRING")
+Canada_Border <- st_cast(filter(Can_Mex_Borders, admin == "Canada"),"MULTILINESTRING")
+
+US_Conus_Cities <- US_Conus_Cities %>% 
+  #add distance between the city and the nearest US national border in km
+  mutate(dist_to_nat_border = set_units(st_distance(US_Conus_Cities, National_Border), "km")) %>% 
+  #add distance to the nearest state border
+  mutate(dist_to_state_border = set_units(st_distance(US_Conus_Cities, State_Border), "km")) %>% 
+  #add the distance to mexico border
+  mutate(dist_to_mex = set_units(st_distance(US_Conus_Cities, Mexico_Border), "km")) %>% 
+  #add the distance from us cities to canada
+  mutate(dist_to_can = set_units(st_distance(US_Conus_Cities, Canada_Border), "km")) %>% 
+  #add the difference between the distance to mexico and canada as an absolute value in km
+  mutate(dist_between_can_mex = set_units(abs(drop_units((st_distance(US_Conus_Cities, Canada_Border, "km") - st_distance(US_Conus_Cities, Mexico_Border, "km")))), "km")     )
+```
+
+
+Now table printing.
+
+```{r, warning=FALSE, message=FALSE}
+#first distance to national border
+JCA_print_top_table(US_Conus_Cities, "dist_to_nat_border", sf_column_names = c("city", "state_name", "dist_to_nat_border"), new_column_names = c("City", "State", "Distance"), title = "Distance From National Border To City")
+
+#then distance to state border
+JCA_print_top_table(US_Conus_Cities, "dist_to_state_border", sf_column_names = c("city", "state_name", "dist_to_state_border"), new_column_names = c("City", "State", "Distance"), title = "Distance from State Border to City")
+
+#then dist to mexico
+JCA_print_top_table(US_Conus_Cities, "dist_to_mex", sf_column_names = c("city", "state_name", "dist_to_mex"), new_column_names = c("City", "State", "Distance"), title = "Distance from City to Mexico Border")
+
+#dist to canada
+JCA_print_top_table(US_Conus_Cities, "dist_to_can", sf_column_names = c("city", "state_name", "dist_to_can"), new_column_names = c("City", "State", "Distance"), title = "Distance from City to Canada Border")
+
+```
+<br><br>  
+
+Now it's time to create the maps.
+```{r, warning=FALSE, message=FALSE}
+#first is the map of distance from the us border
+ggplot()+
+  geom_sf(data = Conus_States, fill = "#454742", col = "#8d8c8b", size = .5)+
+  geom_sf(data = US_Conus_Cities, size=.001, aes(color = drop_units(dist_to_nat_border), alpha = .8))+
+  scale_color_gradient(low = "#099bc4", high = "#47e88c")+
+  geom_sf(data = slice_max(US_Conus_Cities, dist_to_nat_border, n = 5),size = .5, color = "#eef7f2")+
+  ggrepel::geom_label_repel(data = slice_max(US_Conus_Cities, dist_to_nat_border, n = 5),
+                            aes(label = city, geometry = geometry),
+                            stat = "sf_coordinates",
+                            size = 3,
+                            color = "white",
+                            fill = "#454742")+
+  theme(panel.background = element_rect(fill = "#272727",
+                                        colour = "#272727",
+                                        size = .5,
+                                        linetype = "dashed"),
+        panel.grid.major = element_line(size = .5,
+                                        color = "#3d3d3d",
+                                        linetype = "solid"))+
+   labs(title = "Distance from US National Border to US Cities",
+         x = "",
+         y ="")+
+  theme(legend.position = "hide")
+
+#turn this into a function
+```
+
+  
+Figuring out how to make the Canada Mexico difference work.
+
+```{r, warning=FALSE, message=FALSE}
+ggplot()+
+  geom_sf(data = Conus_States, fill = "#454742", col = "#8d8c8b", size = .5)+
+  geom_sf(data = US_Conus_Cities, size=2, aes(color = drop_units(dist_between_can_mex), alpha = .8))+
+  gghighlight(drop_units(dist_between_can_mex) < 100, unhighlighted_params = aes(alpha = .1, size = .001))+
+  scale_color_gradient(low = "#099bc4", high = "#47e88c")+
+  geom_sf(data = slice_max(US_Conus_Cities, dist_between_can_mex, n = 5), size = .5, color = "#eef7f2")+
+  ggrepel::geom_label_repel(data = slice_min(US_Conus_Cities, drop_units(dist_between_can_mex), n = 5),
+                            aes(label = city, geometry = geometry),
+                            stat = "sf_coordinates",
+                            size = 3,
+                            color = "white",
+                            fill = "#454742")+
+  theme(panel.background = element_rect(fill = "#272727",
+                                        colour = "#272727",
+                                        size = .5,
+                                        linetype = "dashed"),
+        panel.grid.major = element_line(size = .5,
+                                        color = "#3d3d3d",
+                                        linetype = "solid"))+
+     labs(title = "Equidistant from Canada and Mexico Border",
+         x = "",
+         y ="")+
+  theme(legend.position = "hide")
+
+```
+
+
+
+
+
+```{r, warning=FALSE, message=FALSE}
+
+#distance from city to us border
+JCA_plot_sf_point_var_firefly(sf_base_poly = Conus_States, sf_point_data = US_Conus_Cities, slice_var_name = "dist_to_nat_border", "city", "Distance to US Border", "Top 5 States Farthest from US Border")
+
+#distance from city to state border
+JCA_plot_sf_point_var_firefly(sf_base_poly = Conus_States, sf_point_data = US_Conus_Cities, slice_var_name = "dist_to_state_border", "city", "Distance to US State Border", "Top 5 States Farthest from US State Border")
+
+
+#equidistant between Mexico and Canada
+
+#first we get a new sf with mutate between 
+#JCA_plot_sf_point_var_firefly(sf_base_poly = Conus_States, sf_point_data = US_Conus_Cities, slice_var_name = #"dist_between_can_mex", "city", "Distance between Canada and Mexico", "Within 100 km", screen_points = "TRUE", #highlight_value = 100)
+
+
+```
+
+```{r, warning=FALSE, message=FALSE}
+JCA_one_row_table <- function(sf_data, sf_max_col, sf_column_names, new_column_names, title = "Table"){
+  sf_data %>% 
+     
+    kable(col.names = new_column_names) %>% 
+    kable_material_dark(c("striped", "hover")) %>% 
+    kable_styling(repeat_header_text = "Title") %>% 
+    add_header_above(c(title ,"", ""))
+}
+
+#number of cities within 100 miles of US border CONVERT UNITS!!!
+Border_Cities <- US_Conus_Cities %>% 
+  filter(drop_units(set_units(dist_to_nat_border, "miles")) <= 100) %>% 
+  summarize(city_within = n(), population_within = sum(population, na.rm = TRUE)) %>% 
+  st_drop_geometry() %>%
+  mutate(percent_pop_within = population_within / 332540980 * 100) 
+
+
+JCA_one_row_table(Border_Cities, "percent_pop_within", c("city_within", "population_within", "percent_pop_within"), c("Cities Within 100 Miles of US Border", "Total Population Within", "Percentage of Population Within"), title = "US Customs and Border Protection Jurisdiction")
+
+```
+I'd like help setting up a census api key so that I can use tidycensus.
+
+
+Now it's time to map the areas in danger.
+
+```{r, warning=FALSE, message=FALSE}
+ggplot()+
+  geom_sf(data = Conus_States, fill = "#454742", col = "#8d8c8b", size = .5)+
+  geom_sf(data = US_Conus_Cities, size=1, aes(color = drop_units(dist_to_nat_border), alpha = .8))+
+  gghighlight(drop_units(set_units(dist_to_nat_border, "miles")) < 100, unhighlighted_params = aes(alpha = .1, size = .001))+
+  scale_color_gradient(low = "darkred", high = "orange")+
+  geom_sf(data = slice_max(filter(US_Conus_Cities, drop_units(set_units(dist_to_nat_border, "miles")) <= 100), population, n = 10), size = .5, color = "#eef7f2")+
+  ggrepel::geom_label_repel(data = slice_max(filter(US_Conus_Cities, drop_units(set_units(dist_to_nat_border, "miles")) <= 100), population, n = 10),
+                            aes(label = city, geometry = geometry),
+                            stat = "sf_coordinates",
+                            size = 3,
+                            color = "white",
+                            fill = "#454742")+
+  theme(panel.background = element_rect(fill = "#272727",
+                                        colour = "#272727",
+                                        size = .5,
+                                        linetype = "dashed"),
+        panel.grid.major = element_line(size = .5,
+                                        color = "#3d3d3d",
+                                        linetype = "solid"))+
+     labs(title = "Cities at Risk for US Border and Customs Intervention",
+          subtitle = "Top Five Most Populous, at Risk Cities",
+         x = "",
+         y ="")+
+  theme(legend.position = "hide")
+```
+
+
+
+Now the most populous city in each state within 100 miles.
+```{r, warning=FALSE, message=FALSE}
+ggplot()+
+  geom_sf(data = Conus_States, fill = "#454742", col = "#8d8c8b", size = .5)+
+  geom_sf(data = US_Conus_Cities, size=1, aes(color = drop_units(dist_to_nat_border), alpha = .8))+
+  gghighlight(drop_units(set_units(dist_to_nat_border, "miles")) < 100, unhighlighted_params = aes(alpha = .1, size = .001))+
+  scale_color_gradient(low = "darkred", high = "orange")+
+  geom_sf(data = slice_max(group_by(filter(US_Conus_Cities, drop_units(set_units(dist_to_nat_border, "miles")) <= 100), state_name), population, n = 1), size = .5, color = "#eef7f2")+
+  ggrepel::geom_label_repel(data = slice_max(group_by(filter(US_Conus_Cities, drop_units(set_units(dist_to_nat_border, "miles")) <= 100), state_name), population, n = 1),
+                            aes(label = city, geometry = geometry),
+                            stat = "sf_coordinates",
+                            size = 3,
+                            color = "white",
+                            fill = "#454742",
+                            max.overlaps = 400)+
+  theme(panel.background = element_rect(fill = "#272727",
+                                        colour = "#272727",
+                                        size = .5,
+                                        linetype = "dashed"),
+        panel.grid.major = element_line(size = .5,
+                                        color = "#3d3d3d",
+                                        linetype = "solid"))+
+  labs(title = "Cities at Risk for US Border and Customs Intervention",
+          subtitle = "Most Populous, at Risk City Per State",
+         x = "",
+         y ="")+
+  theme(legend.position = "hide")
+```

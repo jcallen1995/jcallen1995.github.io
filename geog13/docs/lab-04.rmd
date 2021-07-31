@@ -1,0 +1,270 @@
+---
+title: "Geography 13"
+author: "[Jason Allen](https://jcallen1995.github.io/)"
+subtitle: 'Lab 04: Tesselations, Point-in-Polygon'
+output:
+  html_document:
+    code_folding: 'hide'
+    theme: journal
+---
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(sf)
+library(USAboundaries)
+library(knitr)
+library(kableExtra)
+library(leaflet)
+library(gghighlight)
+library(rmapshaper)
+library(units)
+library(gghighlight)
+```
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+JCA_plot_sf_tess_firefly <- function(sf_base_poly, slice_var_name, lab_name, title_for_plot ="Title", subtitle_for_plot ="", legend_show = "hide", screen_points = "FALSE"){
+  ggplot()+
+  geom_sf(data = sf_base_poly, fill = "white", col = "navy", size = .2)+
+  theme_void()+
+    labs(title = title_for_plot,
+         subtitle = subtitle_for_plot,
+         x = "",
+         y ="")
+}
+
+
+
+
+#summarize tessellated counties and return a data frame table
+JCA_sf_to_df <- function(sf_data, obj_description = "object"){
+  sf_data %>% 
+    mutate(county_area = drop_units(set_units(st_area(sf_data), "km^2"))) %>% 
+    summarize(sf_purpose = obj_description, num_of_features = n(), mean_area = mean(county_area, na.rm = TRUE), standard_dev = sd(county_area, na.rm = TRUE), total_area = sum(county_area, na.rm = TRUE)) %>% 
+    st_drop_geometry() %>% 
+    as.data.frame()
+}
+
+#function to print the top number in an sf column nicely
+JCA_print_table <- function(sf_data, new_column_names, sf_titles){
+  sf_data %>% 
+    kable(col.names = new_column_names) %>% 
+    kable_minimal(c("striped", "hover")) %>% 
+    kable_styling(repeat_header_text = "Title") %>% 
+    add_header_above(sf_titles)}
+
+#point in polygon function for dams in each county
+JCA_PIP <- function(point_data, poly_data, column_name){
+  poly_data %>% 
+    st_join(point_data) %>% 
+    count(get(column_name))
+}
+
+
+
+#plot for counties filled by number of dams
+JCA_plot_dam_tess <- function(sf_base_poly, count_name, lab_name, title_for_plot ="Title", subtitle_for_plot ="", caption_for_plot = "", legend_show = "hide"){
+  ggplot()+
+  geom_sf(data = sf_base_poly, aes(fill = get(count_name)), col = NA, size = .2)+
+  scale_color_continuous(viridis::viridis(8))+
+  theme_void()+
+    labs(title = title_for_plot,
+         subtitle = subtitle_for_plot,
+         caption = paste0("There are ", sum(sf_base_poly$n, na.rm = TRUE), " total Dams"),
+         x = "",
+         y ="",
+         fill = "Dams")
+
+  
+}
+
+
+
+#point in polygon function for dams in each county by purpose
+JCA_PIP_Purpose <- function(point_data, poly_data, column_name, desired_purpose, purpose_column_name){
+  poly_data %>% 
+    st_join(point_data) %>% 
+    filter(grepl(desired_purpose, purpose_column_name)) %>% 
+    count(get(column_name))
+}
+
+
+#plot for counties filled by number of dams
+JCA_plot_dam_tess_purpose <- function(sf_base_poly, count_name, title_for_plot ="Title", subtitle_for_plot ="", caption_for_plot = "", legend_show = "hide", dam_purpose = ""){
+  ggplot()+
+  geom_sf(data = sf_base_poly, aes(fill = get(count_name)), col = NA, size = .2)+
+  gghighlight(n >  (mean(n) + sd(n)) )+
+  scale_color_continuous(viridis::viridis(8))+
+  theme_void()+
+    labs(title = title_for_plot,
+         subtitle = subtitle_for_plot,
+         caption = paste0("There are ", sum(sf_base_poly$n, na.rm = TRUE), " total", dam_purpose,  " Dams"),
+         x = "",
+         y ="",
+         fill = "Dams")
+}
+```
+
+
+First step is Tessellation.
+
+```{r, message=FALSE, warning=FALSE}
+US_Conus_Counties <- st_transform(st_as_sf(filter(us_counties(), !(state_name %in% c("Alaska", "Hawaii", "Puerto Rico"))), coords = c("lng", "lat"), crs = 4326), crs = 5070)
+
+ggplot() +
+  geom_sf(data = US_Conus_Counties)
+```
+
+Now it's time to tesselate the cities.
+
+```{r, message=FALSE, warning=FALSE}
+US_Counties_Tess <- st_combine(st_centroid(US_Conus_Counties))
+
+ggplot()+
+  geom_sf(data = US_Counties_Tess)
+
+```
+Voroni
+
+```{r, message=FALSE, warning=FALSE}
+US_Counties_Voroni <- st_intersection(mutate(st_as_sf(st_cast(st_voronoi(US_Counties_Tess))), poly_id = 1:n()), st_union(US_Conus_Counties))
+
+US_Counties_Voroni <- rmapshaper::ms_simplify(US_Counties_Voroni, keep = .3)
+
+
+JCA_plot_sf_tess_firefly(US_Counties_Voroni, title_for_plot = "US Voroni Counties")
+
+#create df
+Counties_Voroni_Table <- JCA_sf_to_df(US_Counties_Voroni, "Voroni")
+#print table
+JCA_print_table(Counties_Voroni_Table, c("Tessellation", "Number of Features", "Mean Area", "Standard Deviation", "Total Area"), c("US Voroni Counties", "","","",""))
+
+```
+
+Triangulation
+
+```{r, message=FALSE, warning=FALSE}
+US_Counties_Tri <- st_intersection(mutate(st_as_sf(st_cast(st_triangulate(US_Counties_Tess))), poly_id = 1:n()), st_union(US_Conus_Counties))
+
+US_Counties_Tri <- rmapshaper::ms_simplify(US_Counties_Tri, keep = .3)
+
+
+
+JCA_plot_sf_tess_firefly(US_Counties_Tri, title_for_plot = "US Triangulated Counties")
+
+#create df
+Counties_Tri_Table <- JCA_sf_to_df(US_Counties_Tri, "Triangulation")
+#print table
+JCA_print_table(Counties_Tri_Table, c("Triangulation", "Number of Features", "Mean Area", "Standard Deviation", "Total Area"), c("US Triangulated Counties", "","","",""))
+```
+
+Now, a square grid.
+
+```{r, message=FALSE, warning=FALSE}
+US_Counties_Sqr <- st_intersection(st_as_sf(st_cast(st_make_grid(US_Conus_Counties, n = c(70, 70)))), st_union(US_Conus_Counties)) %>% 
+  mutate(poly_id = 1:n())
+
+JCA_plot_sf_tess_firefly(US_Counties_Sqr, title_for_plot = "US Square Grid Counties")
+
+#create df
+Counties_Sqr_Table <- JCA_sf_to_df(US_Counties_Sqr, "Square Grid")
+#print table
+JCA_print_table(Counties_Sqr_Table, c("Square Grid", "Number of Features", "Mean Area", "Standard Deviation", "Total Area"), c("US Voroni Counties", "","","",""))
+
+```
+
+
+
+
+Now hexagons.
+
+```{r, message=FALSE, warning=FALSE}
+US_Counties_Hex <- st_intersection(st_as_sf(st_cast(st_make_grid(US_Conus_Counties, n = c(70, 70), square = FALSE))), st_union(US_Conus_Counties)) %>% 
+  mutate(poly_id = 1:n())
+
+US_Counties_Hex <- sf::st_collection_extract(US_Counties_Hex, "POLYGON")
+
+
+JCA_plot_sf_tess_firefly(US_Counties_Hex, title_for_plot = "US Hex Grid Counties")
+
+#create df
+Counties_Hex_Table <- JCA_sf_to_df(US_Counties_Voroni, "Hexagonal Grid")
+#print table
+JCA_print_table(Counties_Hex_Table, c("Hexagonal Grid", "Number of Features", "Mean Area", "Standard Deviation", "Total Area"), c("US Voroni Counties", "","","",""))
+
+```
+
+
+
+```{r}
+Tess_Sum_Table <- bind_rows(Counties_Voroni_Table, Counties_Tri_Table, Counties_Sqr_Table, Counties_Hex_Table)
+
+JCA_print_table(Tess_Sum_Table,  c("Tessellation Type", "Number of Features", "Mean Area", "Standard Deviation", "Total Area"), c("US County Tessellations", "","","",""))
+
+
+```
+
+
+
+The voroni geometry would likely select for a group of points that are withing the reletive area of the centroid it was made from. The triangulation would likely split up local area into different polygons since the vertices of the polygons are the centroids which in this case were the county centers. The square and hex grids are more regular when they aren't close to borders, but since the distribution of the grid cells aren't related to the county centers, there's no way of predicting where the boundaries of the grids would divide up the area or any points in polygons.
+
+Depending on what point data you're looking at, whether there is any obvious realtion to county centers, you would get discrimination between the different tessellation types.
+
+
+
+<br><br>  
+
+It's about dam time.
+```{r, warning=FALSE}
+
+dam_url <- "../data/NID2019_U.xlsx"
+
+Dam_Data <- filter(as.data.frame(readxl::read_xlsx(dam_url)), !is.na(LONGITUDE) & !is.na(LATITUDE))
+
+Dam_Data <- st_transform(st_as_sf(Dam_Data, coords = c("LONGITUDE", "LATITUDE"), crs = 4326), crs = 5070)
+
+
+#develop function to discriminate based on tessellations
+
+
+
+
+Voroni_Tess <- JCA_PIP(Dam_Data, US_Counties_Voroni, "poly_id")
+Tri_Tess <- JCA_PIP(Dam_Data, US_Counties_Tri, "poly_id")
+Sqr_Tess <- JCA_PIP(Dam_Data, US_Counties_Sqr, "poly_id")
+Hex_Tess <- JCA_PIP(Dam_Data, US_Counties_Hex, "poly_id")
+
+
+JCA_plot_dam_tess(Voroni_Tess, count_name = "n", title_for_plot = "Dams per Voroni County")
+JCA_plot_dam_tess(Tri_Tess, count_name = "n", title_for_plot = "Dams per Triangulated County")
+JCA_plot_dam_tess(Sqr_Tess, count_name = "n", title_for_plot = "Dams per Square Grid County")
+JCA_plot_dam_tess(Hex_Tess, count_name = "n", title_for_plot = "Dams per Hexagonal Grid County")
+
+
+
+Dam_Rec <- JCA_PIP_Purpose(Dam_Data, US_Counties_Voroni, "poly_id", "P", "PURPOSES")
+Dam_Hydro <- JCA_PIP_Purpose(Dam_Data, US_Counties_Voroni, "poly_id", "H", "PURPOSES")
+Dam_Fire_Protec <- JCA_PIP_Purpose(Dam_Data, US_Counties_Voroni, "poly_id", "P", "PURPOSES")
+Dam_Water_Sup <- JCA_PIP_Purpose(Dam_Data, US_Counties_Voroni, "poly_id", "S", "PURPOSES")
+
+
+
+
+#since mean and sd are stupid functions that don't make any sense, I can't just had to set it to n for the mean and standard part
+JCA_plot_dam_tess_purpose(Dam_Rec, "n", title_for_plot = "Recreational Dams", dam_purpose = " Recreation")
+JCA_plot_dam_tess_purpose(Dam_Hydro, "n", title_for_plot = "Hydroelectric Dams", dam_purpose = " Hydro")
+JCA_plot_dam_tess_purpose(Dam_Fire_Protec, "n", title_for_plot = "Fire Protection", dam_purpose = " Fire Protection")
+JCA_plot_dam_tess_purpose(Dam_Water_Sup, "n", title_for_plot = "Water Supply", dam_purpose = " Water Supply")
+
+
+
+
+```
+
+
+Truth, be told, I can't tell if there's any difference between the 4 dam categories I chose on the map, though that could be explained by counties that contain dams having a lot of them or a simple error I'm unable to see. As far as geographic patterns are concerned, I see that the norther US dams correspond to the upstrem of the Mississippi river.
+
+
+
+
+
+
