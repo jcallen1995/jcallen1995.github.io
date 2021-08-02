@@ -2,6 +2,25 @@
 title: "Projects"
 ---
 
+Final lab for my maps and spatial reasoning course
+
+****  
+
+<br>
+
+# [<i class="fas fa-book"></i> Interactive Web Mapping](./geog13/docs/geog-w12-lab-7.html)
+![](./geog13/img/w12-inter-map.png){width=20%}  
+
+#### This lab coincided quite well with my programming for GIS course since I had already been tought how to make a leaflet map when I got this lab.
+
+
+<br><br><br><br>  
+
+
+****
+
+
+
 These are some of the coding projects I completed as part of my Programming for GIS course.
 
 
