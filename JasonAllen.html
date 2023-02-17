@@ -13,8 +13,8 @@
 
 <title>Jason Allen</title>
 
-<script src="site_libs/header-attrs-2.9/header-attrs.js"></script>
-<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<script src="site_libs/header-attrs-2.19/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/simplex.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -62,6 +62,7 @@ if (window.hljs) {
 
 
 
+
 <style type = "text/css">
 .main-container {
   max-width: 940px;
@@ -82,6 +83,9 @@ button.code-folding-btn:focus {
 }
 summary {
   display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
 }
 pre code {
   padding: 0;
@@ -139,11 +143,15 @@ $(document).ready(function () {
     href = "index.html";
   var menuAnchor = $('a[href="' + href + '"]');
 
-  // mark it active
-  menuAnchor.tab('show');
-
-  // if it's got a parent navbar menu mark it active as well
-  menuAnchor.closest('li.dropdown').addClass('active');
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
 
   // Navbar adjustments
   var navHeight = $(".navbar").first().height() + 15;
@@ -172,8 +180,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -181,16 +189,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -234,7 +235,7 @@ $(document).ready(function () {
 <div class="navbar navbar-default  navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
@@ -295,26 +296,32 @@ $(document).ready(function () {
 
 <p>6548 Cordoba rd<br />
 Isla Vista, CA 93117<br />
-Email: <a href="mailto:jcallen@ucsb.edu?subject=%5BGitHub%20Website%5D">jcallen@ucsb.edu</a><br />
+Email: <a
+href="mailto:jcallen@ucsb.edu?subject=%5BGitHub%20Website%5D">jcallen@ucsb.edu</a><br />
 Cell: <a href="tel:7074864820">707-486-4820</a><br />
 <a href="./CV/Resume%20July%202021.pdf">PDF Download</a></p>
 <div id="research-interests" class="section level2">
 <h2>Research Interests</h2>
 <ul>
-<li>Geospatial Data Analysis, Physics, Space Mission Design, Technical Visualization</li>
+<li>Geospatial Data Analysis, Physics, Space Mission Design, Technical
+Visualization</li>
 </ul>
 </div>
 <div id="education" class="section level2">
 <h2>Education</h2>
-<div id="university-of-california-santa-barbara-in-progress-physics-bs" class="section level4">
+<div id="university-of-california-santa-barbara-in-progress-physics-bs"
+class="section level4">
 <h4>University of California Santa Barbara — In Progress Physics BS</h4>
 <p><strong>August 2018 - April 2019</strong></p>
 </div>
-<div id="santa-rosa-junior-college-physics-aa-coursework" class="section level4">
+<div id="santa-rosa-junior-college-physics-aa-coursework"
+class="section level4">
 <h4>Santa Rosa Junior College — Physics AA Coursework</h4>
 <p><strong>August 2013 - May 2018</strong></p>
 <ul>
-<li>Relevant Coursework - Classical Mechanics, Modern Physics, Calculus, Differential Equations, Linear Algebra, Programming C++, Psychology, Cultural Anthropology, Critical Thinking and Advanced Composition.</li>
+<li>Relevant Coursework - Classical Mechanics, Modern Physics, Calculus,
+Differential Equations, Linear Algebra, Programming C++, Psychology,
+Cultural Anthropology, Critical Thinking and Advanced Composition.</li>
 </ul>
 </div>
 </div>
@@ -323,36 +330,46 @@ Cell: <a href="tel:7074864820">707-486-4820</a><br />
 <div id="nasa-big-ideas-challenge-2020" class="section level4">
 <h4>NASA Big Idea’s Challenge 2020</h4>
 <ul>
-<li>I helped design a solar powered laser device to reduce dust on the lunar surface and rendered a 3D movie demonstrating our device with Blender.</li>
+<li>I helped design a solar powered laser device to reduce dust on the
+lunar surface and rendered a 3D movie demonstrating our device with
+Blender.</li>
 </ul>
 </div>
 <div id="team-fusion-research-review" class="section level4">
 <h4>Team Fusion Research Review</h4>
 <ul>
-<li>Led a team of three students in creating a poster to explain hydrogen fusion to the general public. Met all deadlines and specifications without fail.</li>
+<li>Led a team of three students in creating a poster to explain
+hydrogen fusion to the general public. Met all deadlines and
+specifications without fail.</li>
 </ul>
 </div>
 <div id="satellite-communication-antenna" class="section level4">
 <h4>Satellite Communication Antenna</h4>
 <ul>
-<li>We used a simple antenna and radio setup to receive signal from a cube satellite with free linux based software.</li>
+<li>We used a simple antenna and radio setup to receive signal from a
+cube satellite with free linux based software.</li>
 </ul>
 </div>
 </div>
 <div id="experience" class="section level2">
 <h2>Experience</h2>
-<div id="knighted-ventures-petaluma-gaming-associate" class="section level4">
+<div id="knighted-ventures-petaluma-gaming-associate"
+class="section level4">
 <h4>Knighted Ventures, Petaluma— Gaming Associate</h4>
 <p><strong>December 2019 - January 2020</strong></p>
 <ul>
-<li>I assisted casino dealers full time with banking games and I was responsible for ensuring asset protection and maintaining the integrity of the games by catching mistakes at the table.</li>
+<li>I assisted casino dealers full time with banking games and I was
+responsible for ensuring asset protection and maintaining the integrity
+of the games by catching mistakes at the table.</li>
 </ul>
 </div>
-<div id="bouverie-preserve-glen-ellen-juniper-volunteer" class="section level4">
+<div id="bouverie-preserve-glen-ellen-juniper-volunteer"
+class="section level4">
 <h4>Bouverie Preserve, Glen Ellen— Juniper (Volunteer)</h4>
 <p><strong>2007 - 2013</strong></p>
 <ul>
-<li>Helped lead hikes for the general public and assisted with wildlife research.</li>
+<li>Helped lead hikes for the general public and assisted with wildlife
+research.</li>
 </ul>
 </div>
 </div>

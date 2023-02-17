@@ -13,8 +13,8 @@
 
 <title>Projects</title>
 
-<script src="site_libs/header-attrs-2.9/header-attrs.js"></script>
-<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<script src="site_libs/header-attrs-2.19/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/simplex.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -62,6 +62,7 @@ if (window.hljs) {
 
 
 
+
 <style type = "text/css">
 .main-container {
   max-width: 940px;
@@ -82,6 +83,9 @@ button.code-folding-btn:focus {
 }
 summary {
   display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
 }
 pre code {
   padding: 0;
@@ -139,11 +143,15 @@ $(document).ready(function () {
     href = "index.html";
   var menuAnchor = $('a[href="' + href + '"]');
 
-  // mark it active
-  menuAnchor.tab('show');
-
-  // if it's got a parent navbar menu mark it active as well
-  menuAnchor.closest('li.dropdown').addClass('active');
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
 
   // Navbar adjustments
   var navHeight = $(".navbar").first().height() + 15;
@@ -172,8 +180,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -181,16 +189,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -234,7 +235,7 @@ $(document).ready(function () {
 <div class="navbar navbar-default  navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
@@ -297,57 +298,83 @@ $(document).ready(function () {
 <hr />
 <p><br></p>
 <div id="interactive-web-mapping" class="section level1">
-<h1><a href="./geog13/docs/geog-w12-lab-7.html"><i class="fas fa-book"></i> Interactive Web Mapping</a></h1>
+<h1><a
+href="./geog13/docs/geog-w12-lab-7.html"><i class="fas fa-book"></i>
+Interactive Web Mapping</a></h1>
 <p><img src="geog13/img/w12-inter-map.png" style="width:20.0%" /></p>
-<div id="this-lab-coincided-quite-well-with-my-programming-for-gis-course-since-i-had-already-been-tought-how-to-make-a-leaflet-map-when-i-got-this-lab." class="section level4">
-<h4>This lab coincided quite well with my programming for GIS course since I had already been tought how to make a leaflet map when I got this lab.</h4>
+<div
+id="this-lab-coincided-quite-well-with-my-programming-for-gis-course-since-i-had-already-been-tought-how-to-make-a-leaflet-map-when-i-got-this-lab."
+class="section level4">
+<h4>This lab coincided quite well with my programming for GIS course
+since I had already been tought how to make a leaflet map when I got
+this lab.</h4>
 <p><br><br><br><br></p>
 <hr />
-<p>These are some of the coding projects I completed as part of my Programming for GIS course.</p>
+<p>These are some of the coding projects I completed as part of my
+Programming for GIS course.</p>
 <p><br><br><br><br></p>
 <hr />
 <p><br></p>
 </div>
 </div>
 <div id="distances-and-border-zone" class="section level1">
-<h1><a href="./geog13/docs/lab-04.html"><i class="fas fa-book"></i> Distances and Border Zone</a></h1>
+<h1><a href="./geog13/docs/lab-04.html"><i class="fas fa-book"></i>
+Distances and Border Zone</a></h1>
 <p><img src="geog13/img/lab-4-rec.png" style="width:20.0%" /></p>
-<div id="the-purpose-of-this-lab-was-to-get-acquainted-with-using-gghighlight-and-creating-functions-to-further-automate-the-processes-were-building." class="section level4">
-<h4>The purpose of this lab was to get acquainted with using gghighlight and creating functions to further automate the processes we’re building.</h4>
+<div
+id="the-purpose-of-this-lab-was-to-get-acquainted-with-using-gghighlight-and-creating-functions-to-further-automate-the-processes-were-building."
+class="section level4">
+<h4>The purpose of this lab was to get acquainted with using gghighlight
+and creating functions to further automate the processes we’re
+building.</h4>
 <p><br><br><br><br></p>
 <hr />
 <p><br></p>
 </div>
 </div>
 <div id="distances-and-border-zone-1" class="section level1">
-<h1><a href="./geog13/docs/lab-03.html"><i class="fas fa-book"></i> Distances and Border Zone</a></h1>
+<h1><a href="./geog13/docs/lab-03.html"><i class="fas fa-book"></i>
+Distances and Border Zone</a></h1>
 <p><img src="geog13/img/lab-3-100-m.png" style="width:20.0%" /></p>
-<div id="the-purpose-of-this-lab-was-to-get-acquainted-with-using-gghighlight-and-creating-functions-to-further-automate-the-processes-were-building.-1" class="section level4">
-<h4>The purpose of this lab was to get acquainted with using gghighlight and creating functions to further automate the processes we’re building.</h4>
+<div
+id="the-purpose-of-this-lab-was-to-get-acquainted-with-using-gghighlight-and-creating-functions-to-further-automate-the-processes-were-building.-1"
+class="section level4">
+<h4>The purpose of this lab was to get acquainted with using gghighlight
+and creating functions to further automate the processes we’re
+building.</h4>
 <p><br><br><br><br></p>
 <hr />
 <p><br></p>
 </div>
 </div>
 <div id="data-wrangling-covid-19" class="section level1">
-<h1><a href="./geog13/docs/lab-02.html"><i class="fas fa-book"></i> Data Wrangling COVID 19</a></h1>
+<h1><a href="./geog13/docs/lab-02.html"><i class="fas fa-book"></i> Data
+Wrangling COVID 19</a></h1>
 <p><img src="geog13/img/lab-2-cap.png" style="width:20.0%" /></p>
-<div id="this-assignment-pushed-us-to-utilize-the-new-data-manipulation-skills-we-learned" class="section level4">
-<h4>This assignment pushed us to utilize the new data manipulation skills we learned</h4>
+<div
+id="this-assignment-pushed-us-to-utilize-the-new-data-manipulation-skills-we-learned"
+class="section level4">
+<h4>This assignment pushed us to utilize the new data manipulation
+skills we learned</h4>
 </div>
-<div id="in-order-to-analyze-the-ny-times-covid-current-data-set." class="section level4">
+<div id="in-order-to-analyze-the-ny-times-covid-current-data-set."
+class="section level4">
 <h4>in order to analyze the NY Times COVID current data set.</h4>
 <p><br><br><br><br></p>
 <hr />
 <p><br></p>
 </div>
 </div>
-<div id="building-a-project-website.-june-25-2021" class="section level1">
-<h1><a href="https://mikejohnson51.github.io/spds/lab-01.html"><i class="fas fa-book"></i> Building a project website. June 25, 2021</a></h1>
+<div id="building-a-project-website.-june-25-2021"
+class="section level1">
+<h1><a
+href="https://mikejohnson51.github.io/spds/lab-01.html"><i class="fas fa-book"></i>
+Building a project website. June 25, 2021</a></h1>
 <p><img src="img/my-website-screenshot.png" style="width:20.0%" /></p>
 <ul>
 <li>Geography 13 course assignment</li>
-<li>In this assignment we built a static users site with Github Pages</li>
+<li>In this assignment we built a static users site with Github
+Pages</li>
 <li>Includes a github repo for access to all the code.</li>
 <li>The final step was publishing the site.</li>
 <li>You should be reading this on the website right now.</li>

@@ -13,8 +13,8 @@
 
 <title>Internship</title>
 
-<script src="site_libs/header-attrs-2.9/header-attrs.js"></script>
-<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<script src="site_libs/header-attrs-2.19/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/simplex.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -62,6 +62,7 @@ if (window.hljs) {
 
 
 
+
 <style type = "text/css">
 .main-container {
   max-width: 940px;
@@ -82,6 +83,9 @@ button.code-folding-btn:focus {
 }
 summary {
   display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
 }
 pre code {
   padding: 0;
@@ -139,11 +143,15 @@ $(document).ready(function () {
     href = "index.html";
   var menuAnchor = $('a[href="' + href + '"]');
 
-  // mark it active
-  menuAnchor.tab('show');
-
-  // if it's got a parent navbar menu mark it active as well
-  menuAnchor.closest('li.dropdown').addClass('active');
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
 
   // Navbar adjustments
   var navHeight = $(".navbar").first().height() + 15;
@@ -172,8 +180,8 @@ $(document).ready(function () {
   border-radius: 4px;
 }
 
-.tabset-dropdown > .nav-tabs > li.active:before {
-  content: "";
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
   font-family: 'Glyphicons Halflings';
   display: inline-block;
   padding: 10px;
@@ -181,16 +189,9 @@ $(document).ready(function () {
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
-  content: "&#xe258;";
-  border: none;
-}
-
-.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
-  content: "";
+  content: "\e258";
   font-family: 'Glyphicons Halflings';
-  display: inline-block;
-  padding: 10px;
-  border-right: 1px solid #ddd;
+  border: none;
 }
 
 .tabset-dropdown > .nav-tabs > li.active {
@@ -234,7 +235,7 @@ $(document).ready(function () {
 <div class="navbar navbar-default  navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
@@ -294,42 +295,69 @@ $(document).ready(function () {
 
 
 <center>
-<div id="this-is-my-current-progress-toward-getting-started-at-my-internship." class="section level4">
-<h4>This is my current progress toward getting started at my internship.</h4>
+<div
+id="this-is-my-current-progress-toward-getting-started-at-my-internship."
+class="section level4">
+<h4>This is my current progress toward getting started at my
+internship.</h4>
 </div>
 <div id="arc-gis-online-profile" class="section level3">
-<h3><a href="https://www.arcgis.com/index.html"><img src="img/arcgis-logo-1.png" style="width:20.0%" /></a> <a href="https://ucsb.maps.arcgis.com/home/user.html">Arc GIS Online Profile</a></h3>
+<h3><a href="https://www.arcgis.com/index.html"><img
+src="img/arcgis-logo-1.png" style="width:20.0%" /></a> <a
+href="https://ucsb.maps.arcgis.com/home/user.html">Arc GIS Online
+Profile</a></h3>
 <p><br></p>
 <hr />
 <p><strong>July, 2021</strong></p>
-<p><a href="https://ucsb.maps.arcgis.com/apps/instant/minimalist/index.html?appid=1dbf27b5c8c346f9a511ebbb3db156fe"><img src="img/ArcGIS-Capture/coyote-capture.png" style="width:30.0%" /></a></p>
+<p><a
+href="https://ucsb.maps.arcgis.com/apps/instant/minimalist/index.html?appid=1dbf27b5c8c346f9a511ebbb3db156fe"><img
+src="img/ArcGIS-Capture/coyote-capture.png"
+style="width:30.0%" /></a></p>
 </div>
-<div id="arcgis-online-module-4-coyote-sightings" class="section level3">
-<h3><a href="https://ucsb.maps.arcgis.com/apps/instant/minimalist/index.html?appid=1dbf27b5c8c346f9a511ebbb3db156fe">ArcGIS Online Module 4: Coyote Sightings</a></h3>
-<p><em>Interactive map showing coyote spottings that can be edited by the public.</em></p>
+<div id="arcgis-online-module-4-coyote-sightings"
+class="section level3">
+<h3><a
+href="https://ucsb.maps.arcgis.com/apps/instant/minimalist/index.html?appid=1dbf27b5c8c346f9a511ebbb3db156fe">ArcGIS
+Online Module 4: Coyote Sightings</a></h3>
+<p><em>Interactive map showing coyote spottings that can be edited by
+the public.</em></p>
 <p><br><br></p>
 <hr />
 <p><strong>July, 2021</strong></p>
-<p><a href="https://ucsb.maps.arcgis.com/apps/instant/minimalist/index.html?appid=cc13827a0121407ca2b2300522c4dce3"><img src="img/child-poverty.png" style="width:30.0%" /></a></p>
+<p><a
+href="https://ucsb.maps.arcgis.com/apps/instant/minimalist/index.html?appid=cc13827a0121407ca2b2300522c4dce3"><img
+src="img/child-poverty.png" style="width:30.0%" /></a></p>
 </div>
-<div id="arcgis-online-module-3-detroit-child-poverty" class="section level3">
-<h3><a href="https://ucsb.maps.arcgis.com/apps/instant/minimalist/index.html?appid=cc13827a0121407ca2b2300522c4dce3">ArcGIS Online Module 3: Detroit Child Poverty</a></h3>
-<p><em>Using census data to find large groupings of children under 14 in low income households.</em></p>
+<div id="arcgis-online-module-3-detroit-child-poverty"
+class="section level3">
+<h3><a
+href="https://ucsb.maps.arcgis.com/apps/instant/minimalist/index.html?appid=cc13827a0121407ca2b2300522c4dce3">ArcGIS
+Online Module 3: Detroit Child Poverty</a></h3>
+<p><em>Using census data to find large groupings of children under 14 in
+low income households.</em></p>
 <p><br><br></p>
 <hr />
 <p><strong>July, 2021</strong></p>
-<p><a href="https://arcg.is/1Xu8Xu0"><img src="img/story-map.png" style="width:30.0%" /></a></p>
+<p><a href="https://arcg.is/1Xu8Xu0"><img src="img/story-map.png"
+style="width:30.0%" /></a></p>
 </div>
-<div id="arcgis-online-module-2-research-story-map" class="section level3">
-<h3><a href="https://arcg.is/1Xu8Xu0">ArcGIS Online Module 2: Research Story Map</a></h3>
-<p><em>There were issues with the storymaps example so I was unable to fully replicate it, I did however manage to try out all of the techniques.</em></p>
+<div id="arcgis-online-module-2-research-story-map"
+class="section level3">
+<h3><a href="https://arcg.is/1Xu8Xu0">ArcGIS Online Module 2: Research
+Story Map</a></h3>
+<p><em>There were issues with the storymaps example so I was unable to
+fully replicate it, I did however manage to try out all of the
+techniques.</em></p>
 <p><br><br></p>
 <hr />
 <p><strong>July, 2021</strong></p>
-<p><a href="https://arcg.is/0eK15i0"><img src="img/houston-risk-pop.png" style="width:30.0%" /></a></p>
+<p><a href="https://arcg.is/0eK15i0"><img
+src="img/houston-risk-pop.png" style="width:30.0%" /></a></p>
 </div>
-<div id="arcgis-online-module-1-at-risk-population-in-houston" class="section level3">
-<h3><a href="https://arcg.is/0eK15i0">ArcGIS Online Module 1: At Risk Population in Houston</a></h3>
+<div id="arcgis-online-module-1-at-risk-population-in-houston"
+class="section level3">
+<h3><a href="https://arcg.is/0eK15i0">ArcGIS Online Module 1: At Risk
+Population in Houston</a></h3>
 </center>
 </div>
 
