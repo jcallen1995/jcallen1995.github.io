@@ -1,0 +1,1058 @@
+---
+title: "California Fire Map"
+author: "[Jason Allen](https://jcallen1995.github.io/)"
+subtitle: "Years 20XX-20XX"
+output:
+  html_document:
+    code_folding: 'hide'
+    theme: journal
+
+---
+
+So, to start out I need to get some data. I'm thinking of taking; 
+ - California Counties data (X)
+  * US boundaries data package has it.
+ - average rainfall (X)
+  * got it from national weather sevice.
+ - county population(X)
+  * got it from census
+ - fire polygons or rasters (X)
+  * I found exactly what I wanted.
+ - city names (X)
+  * I ended up getting this from another source.
+ - city polygons (X)
+  * Got it from the city names source.
+ 
+and basically combining all of these into an interractive map that
+the user can zoom in using the leaflet package, flip through the 
+years and also see a graph showing the estimated number of people
+whose lives were affected by the fires. I could also add other fitting
+data if I find good sources, but realistically, I might struggle to
+even find the data that I have listed here.
+
+Tomorrow I'll get started tracking down the data. 
+
+```{r}
+library(tidyverse)
+library(raster)
+library(sf)
+library(rgdal)
+
+GDALinfo("../data/nws_precip_ytd_20220101_conus.tif")
+
+precipitation_conus_path <- "../data/nws_precip_ytd_20220101_conus.tif"
+
+precip_conus_test <- raster(precipitation_conus_path, band = 2)
+
+spplot(precip_conus_test)
+
+```
+
+Okay, so I've tentatively got my precipitation data, wait, let's check that.
+
+Here's the precipitation data source
+
+https://water.weather.gov/precip/download.php
+
+Source: https://www.noaa.gov/
+
+GeoTIFF
+
+The new QPE GeoTIFFs generated from the NCEP Stage IV data are multi-band GeoTIFF. The bands they contain are:
+
+    Band 1 - Observation - Last 24 hours of QPE spanning 12Z to 12Z in inches
+    Band 2 - PRISM normals - PRISM normals in inches (see "Normal Precipitation" section on the About page)
+    Band 3 - Departure from normal - The departure from normal in inches
+    Band 4 - Percent of normal - The percent of normal
+
+Now, this raster shows precip in inches of rainfall. I'm not going to be using
+this for a quantitative calculation, so simply having this much is enough for me.
+
+The next step will be downloading all of the yearly data rasters from 2016-2022,
+then, once I actually have all of them, I have to figure out how to isolate the
+California part of the data. Most likely, I will be projecting the state boundary
+onto the raster and then selecting the raster points within the polygon. Should
+be simple enough once I actually get around to it. I need to also find the rest
+of my data.
+
+The data protocol changed in 2017 for the precip data, so I might need to do something
+different for year 2016 precip data.
+
+Now to check on the r package data sources.
+
+```{r}
+library(USAboundaries)
+
+california_state_select <- us_boundaries(states = 'california')
+
+cali_counties_data <- us_boundaries(states = 'california', type = "county")
+
+plot(california_state_select)
+plot(cali_counties_data)
+```
+
+Okay, so I've got the cali state and county polys in this package. Next is to check
+on the uscities.csv, and find out where its data comes from as well as the 
+us boundary data comes from.
+
+Actually, there is no data source imbeded in the csv that I can find so I'm gonna
+try some open source data.
+
+https://data.ca.gov/dataset/ca-geographic-boundaries
+
+Source: https://data.ca.gov/
+
+this is the one I'll try
+
+```{r}
+library(sf)
+
+ca_places_path <- "../data/ca-places-boundaries/CA_Places_TIGER2016.shp"
+
+ca_places_bound_test <- st_read(ca_places_path) %>% 
+  st_as_sf() %>% 
+  filter(NAME == "Santa Rosa")
+
+plot(ca_places_bound_test)
+```
+
+Okay, this looks promising. I'm just not 100% sure if it will give me city
+polygons or what it even is really. It actually looks like exactly what I wanted.
+
+
+Now onto fire data for california. I'll try this dataset first.
+
+https://hub-calfire-forestry.hub.arcgis.com/datasets/CALFIRE-Forestry::fire-perimeters/explore?location=37.417017%2C-122.003310%2C10.00
+
+Source: https://www.fire.ca.gov/
+
+
+Seems promising. Time to start unpacking the data.
+
+```{r}
+
+fire_data_path <- "../data/California_Wildland_Fire_Perimeters_-All/California_Wildland_Fire_Perimeters_All.shp"
+
+fire_data_perim_test <- st_read(fire_data_path) %>% 
+  st_as_sf() %>% 
+  filter(FIRE_NAME == "TUBBS")
+
+print(fire_data_perim_test)
+
+plot(fire_data_perim_test)
+
+```
+
+Okay, that was great. Now I need to get the populations of each county. I found
+a data source here. It's xslx format, but that should be fine.
+
+https://www.census.gov/data/datasets/time-series/demo/popest/2010s-counties-total.html
+
+Source: https://www.census.gov/en.html
+
+
+```{r}
+
+library(readxl)
+
+county_pop_path <- "../data/co-est2019-annres-06.xlsx"
+
+county_pop <- read_excel(county_pop_path)
+
+```
+
+
+Okay, looks good mostly. The csv doesn't have good column names, but that's fine.
+They're still labeled, just not conveniently so I can work with it. So, these
+numbers are the estimates from between 2010 and 2019 which is basically just a
+rough estimation which is close enough for me. These estimates are more than good
+enough for what I intend to use them for.
+
+
+OKAY. So I now have all my data. What is the next step? I should get started with
+making one of these data sets my 'base' and adding the data layers on from there.
+What is my core data layer? ...
+
+It's probably best to start with the US boundaries data set. It will give me the
+state and county polygons. I also need to figure out what data is getting joined
+to what. So, there are going to be a few separate layers. The base layer will be
+the leaflet map that I'm projecting the data onto. Just above the base layer 
+should be the precipitation layer so as to keep the polygon layer boundaries more
+clearly defined. The layer above that will be the county layer which will have 
+the county population data joined to it. Then, the next layer up will be the city
+polygon layer and the fire boundary layer on top. These two layers will help
+illustrate the proximity of the fires to major city centers.
+
+- leaflet map                         Started
+- precipitation raster                Tidy:[only 2022 so far]
+- county poly with joined pop data    Tidy:[X]
+- city polygons                       Tidy:[X]
+- fire boundary poly                  Tidy:[only 2016 so far]
+
+- affected pop per year graph
+
+With the map breakdown like this, I can create the graph of population 'affected'
+by fires relatively easily.
+
+So in order to get everything ready for the map, I need to start cleaning up the
+data and joining what needs to be joined. To do this, I should make a ggplot that
+allows me to visualize the data layers from bottom to top and make sure I'm cutting
+out any data entries or columns that I don't need.
+
+
+Let's get started with the us boundaries ggplot
+
+```{r}
+
+#libraries are already called, but I might need to reimport the bounradies
+
+#get the california state boundary
+california_state <- us_boundaries(states = 'california')
+
+#get the california counties as an sfc
+cali_counties <- us_boundaries(states = 'california', type = "county")
+
+# I didn't need to recall the boundaries, but I'll just leave them here for now.
+
+#okay, now I want to join the population data to cali_counties.
+#we want a left join where pop gets added onto the states based on name.
+print(county_pop)
+print(cali_counties$name)
+#so, it appears that the names don't match. Trying to remove the .~~~ County, California
+#could be annoying, so I might just add that onto the cali_counties name and join by that
+#I can try mutating on a new column with altered nameing.
+cali_counties_join <- cali_counties %>% 
+  mutate(name_join = paste( ".", cali_counties$name, " County, California", sep = ""))
+
+print(cali_counties_join)
+
+#now try a left join, horrific column name
+cali_counties_join <- cali_counties_join %>% 
+  left_join(county_pop, by = c("name_join" = "table with row headers in column A and column headers in rows 3 through 4 (leading dots indicate sub-parts)"))
+
+#great, that actually worked, now we can cut cali_counties down to size with select and filter.
+#XXXXXXXXXX Continue from here XXXXXXXXXX
+cali_counties_final <- cali_counties_join %>% 
+  st_as_sf(crs = 4326) %>% 
+  dplyr::select(name, '...2', geometry) %>%  #I seriously have to specify this? Completely ridiculous
+  rename("county_population" = "...2") %>% 
+  rename("county_name" = "name")
+
+#create ggplot
+ggplot()+
+  #color the cali counties and their borders
+  geom_sf(data = cali_counties_final, fill = "#454742", col = "#8d8c8b", size = .5)+
+  #create the theme for the background. I'm reusing an old theme
+  theme(panel.background = element_rect(fill = "#272727",
+                                        colour = "#272727",
+                                        size = .5,
+                                        linetype = "dashed"),
+        panel.grid.major = element_line(size = .5,
+                                        color = "#3d3d3d",
+                                        linetype = "solid"))+
+  #title and subtitle. I might need another legend position for credits.
+  theme(legend.position = "hide")+
+    labs(title = "TITLE",
+         subtitle = "SUBTITLE",
+         x = "",
+         y ="")
+
+
+```
+
+Okay, I managed to solve the github push issue by creating a new repo and making
+sure to .gitignore the data folder. Now I have a tidy looking county pop poly 
+var. 
+
+Now I need to decide what to do next. I feel like I want to set up the leaflet
+now since the rest of the data just needs to be wrangled. Then again, getting the
+data tidy first would probably be for the best. Okay, I'll focus on keeping the 
+data tidy first and not get distracted.
+
+```{r}
+#time to tidy the city polys
+ca_places_path <- "../data/ca-places-boundaries/CA_Places_TIGER2016.shp"
+
+ca_places_bound <- st_read(ca_places_path) %>% 
+  st_as_sf(crs = 4326) %>% 
+  dplyr::select(NAMELSAD, geometry) %>% 
+  st_simplify(dTolerance = 200) %>%  #freeport ends up with 'polygon empty' keep note in case it becomes a problem later
+  st_transform(crs = "+proj=longlat +datum=WGS84") #needed for projecting on leaflet
+
+#create ggplot
+ggplot()+
+  #color the objects
+  geom_sf(data = ca_places_bound, fill = "#454742", col = "#8d8c8b", size = .5)+
+  #create the theme for the background. I'm reusing an old theme
+  theme(panel.background = element_rect(fill = "#272727",
+                                        colour = "#272727",
+                                        size = .5,
+                                        linetype = "dashed"),
+        panel.grid.major = element_line(size = .5,
+                                        color = "#3d3d3d",
+                                        linetype = "solid"))+
+  #title and subtitle. I might need another legend position for credits.
+  theme(legend.position = "hide")+
+    labs(title = "TITLE",
+         subtitle = "SUBTITLE",
+         x = "",
+         y ="")
+```
+
+
+Good, the next step should be to tidy up the fire map data and split it into 
+different years. There's probably a built in way of dealing with that, perhaps 
+with groups or something, but I'm going to split the data for the readability of
+my code for now. I can pack things up nicer on the final map if I want to.
+
+Okay, I seriously need to diagnose this terrible error. It's so bad, that even
+the built in st_is_valid() function is useless and breaks upon this mighty 
+error.
+
+```{r}
+#fire map error diagnosis
+fire_data_path <- "../data/California_Wildland_Fire_Perimeters_-All/California_Wildland_Fire_Perimeters_All.shp"
+
+#okay, so the error I need to diagnose is that some of the fire shapefile geometries
+#are broken and also completely break the sf::st_is_valid() diagnosis tool. I hate
+#this and it's driving me insane, so I need to figure out how to isolate the issue
+#without any actual tools. Let's start by recreating the error
+
+#corrupt_fire_data_1 <- st_read(fire_data_path) %>%  #okay, st_read seems to work just fine
+  #dplyr::select(YEAR_, FIRE_NAME, geometry) %>% #select also seems to work and shouldn't mess up anything
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #so, if I do the valid check now, the problem is still the same, all NA
+  #what could I try next that might help isolate the issue? I can repeat the valid
+  #check for all years I want to see if it's just 2017
+  #filter(YEAR_ == 2016) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+
+  #okay, so 2016 is still fine and works, let's try 2017
+  #filter(YEAR_ == 2017) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #Once again, all NA
+
+  #now try 2018
+  #filter(YEAR_ == 2018) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #2018 is fine
+
+  #filter(YEAR_ == 2019) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #2019 works too
+
+  #filter(YEAR_ == 2020) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #2020 is fine
+
+  #filter(YEAR_ == 2021) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #2021 isn't broken either
+
+  #okay,so I have now established that the error is in 2017, now I'll create a new
+  #chunk to keep my notes intact.
+
+
+```
+So, new chunk is going to be for testing the different ways I can break down
+the data from 2017 to locate the erroneous polygon that is breaking st_is_valid()
+
+```{r}
+
+fire_data_path <- "../data/California_Wildland_Fire_Perimeters_-All/California_Wildland_Fire_Perimeters_All.shp"
+
+
+corrupt_fire_data_1 <- st_read(fire_data_path) %>%  #okay, st_read seems to work just fine
+  dplyr::select(YEAR_, ALARM_DATE, FIRE_NAME, geometry) %>% #select also seems to work and shouldn't mess up anything
+  filter(YEAR_ == 2017) %>%  #so the problem is in 2017, but I can try to break it down into months with ALARM_DATE
+  
+  #so now if this valid works, we know the error is in the first half of the year
+  #filter(ALARM_DATE > as.Date("2017-06-01")) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #okay, this is all NA again
+
+  #let's try the beginning of the year
+  #filter(ALARM_DATE < as.Date("2017-06-01")) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #THE BEGINNING IS FINE!!!
+
+  #okay, we'll try october
+  #filter(ALARM_DATE > as.Date("2017-10-01")) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #After is all working!, so now the error must be between june 1st and october 1st
+
+  #let's try september
+  #filter(ALARM_DATE > as.Date("2017-09-01")) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #september is fine
+
+  #august?
+  #filter(ALARM_DATE > as.Date("2017-08-01")) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #august is fine
+  
+  #july?
+  #filter(ALARM_DATE > as.Date("2017-07-01")) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #broken again, so that means that the error is between july 1st and august 1st
+
+  #just july
+  #filter(ALARM_DATE > as.Date("2017-07-01") & ALARM_DATE < as.Date("2017-08-01")) 
+  #still 148 fires
+
+  #first half of July
+  #filter(ALARM_DATE > as.Date("2017-07-01") & ALARM_DATE < as.Date("2017-07-15")) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #the first half is clear
+
+  #last 1/4 if July?
+  #filter(ALARM_DATE > as.Date("2017-07-23") & ALARM_DATE < as.Date("2017-08-01")) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #clear, so that means the error is between july 15th and july 23rd
+
+  #try this window
+  #filter(ALARM_DATE > as.Date("2017-07-14") & ALARM_DATE < as.Date("2017-07-24")) #%>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #error is in here, there are 31 observations, I will try manually checking
+    #NOTHING obvious
+
+  #filter(ALARM_DATE > as.Date("2017-07-16") & ALARM_DATE < as.Date("2017-07-19")) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+
+  #it's between 16 and 17
+  #filter(ALARM_DATE > as.Date("2017-07-15") & ALARM_DATE < as.Date("2017-07-18")) #%>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  
+#there's one :2017 2017-07-17 MURPHY  has multiple 3 point polys
+  
+  #filter(FIRE_NAME == "MURPHY" & ALARM_DATE > as.Date("2017-07-15") & ALARM_DATE < as.Date("2017-07-18")) %>% 
+  #st_is_valid() %>% 
+  #as.data.frame()
+  #that's the one
+
+  #now, let's try filtering it out
+  filter(!(FIRE_NAME == "MURPHY" & ALARM_DATE > as.Date("2017-07-15") & ALARM_DATE < as.Date("2017-07-18"))) %>% 
+  st_is_valid() %>% 
+  as.data.frame()
+  #IT WORKS YEEEESSSSS, THIS TOOK AT LEAST 2 HOURS. I NEED A BREAK!
+  
+
+```
+
+
+```{r}
+library(rmapshaper)
+
+#fire map time
+fire_data_path <- "../data/California_Wildland_Fire_Perimeters_-All/California_Wildland_Fire_Perimeters_All.shp"
+
+#fire data has date format for dates
+fire_data_perim <- st_read(fire_data_path) %>% 
+  st_as_sf() %>% 
+  #okay, so I' having issues with small polygons in the multipoly
+  #I'll try unioning them
+  dplyr::select(YEAR_, ALARM_DATE, FIRE_NAME, geometry) %>% 
+  filter(YEAR_ > 2015)
+
+
+
+#now select for fires in 2016
+fire_data_2016 <- fire_data_perim %>% 
+  filter(YEAR_ == 2016) %>% 
+  #st_union() %>% #this eliminates the issue st_simplify was having with tiny polygons
+  st_make_valid() %>% #valid polygons were triggering the between 0 and 4 points error when they clearly had more than 3 points
+  rmapshaper::ms_simplify(keep = .1, keep_shapes = TRUE) %>% #ms_simplify does better to preserve topology and keeps 10% of the points
+  st_transform(crs = "+proj=longlat +datum=WGS84") #needed for projecting on leaflet
+
+
+#now select for fires in 2017
+fire_data_2017 <- fire_data_perim %>% 
+  filter(YEAR_ == 2017) %>%
+  filter(!(FIRE_NAME == "MURPHY" & ALARM_DATE > as.Date("2017-07-15") & ALARM_DATE < as.Date("2017-07-18"))) %>% 
+  st_make_valid() %>% 
+  #st_union() %>% #this eliminates the issue st_simplify was having with tiny polygons
+  rmapshaper::ms_simplify(keep = .1, keep_shapes = TRUE) %>% 
+  st_transform(crs = "+proj=longlat +datum=WGS84") #needed for projecting on leaflet
+
+
+
+#now select for fires in 2018
+fire_data_2018 <- fire_data_perim %>% 
+  filter(YEAR_ == 2018) %>% 
+  st_make_valid() %>% 
+  rmapshaper::ms_simplify(keep = .1, keep_shapes = TRUE) %>% 
+  st_transform(crs = "+proj=longlat +datum=WGS84") #needed for projecting on leaflet
+
+#now select for fires in 2019
+fire_data_2019 <- fire_data_perim %>% 
+  filter(YEAR_ == 2019) %>% 
+  #might need to remove 'BELLA COLLINA GOLF COURSE SCL' and 'ORTEGA'
+  filter(!(FIRE_NAME == 'ORTEGA' | FIRE_NAME == 'BELLA COLLINA GOLF COURSE SCL')) %>% 
+  #yes, st_make_valid messed them up for some reason
+  st_make_valid() %>% 
+  rmapshaper::ms_simplify(keep = .1, keep_shapes = TRUE) %>% 
+  st_transform(crs = "+proj=longlat +datum=WGS84") #needed for projecting on leaflet
+
+
+#now select for fires in 2020
+fire_data_2020 <- fire_data_perim %>% 
+  filter(YEAR_ == 2020) %>% 
+  st_make_valid() %>% 
+  rmapshaper::ms_simplify(keep = .1, keep_shapes = TRUE) %>% 
+  st_transform(crs = "+proj=longlat +datum=WGS84") #needed for projecting on leaflet
+
+#now select for fires in 2021
+fire_data_2021 <- fire_data_perim %>% 
+  filter(YEAR_ == 2021) %>% 
+  st_make_valid() %>% 
+  rmapshaper::ms_simplify(keep = .1, keep_shapes = TRUE) %>% 
+  st_transform(crs = "+proj=longlat +datum=WGS84") #needed for projecting on leaflet
+
+#NO 2022 FIRE POLYGON DATA!!!!!
+
+#now select for fires in 2022
+#fire_data_2022 <- fire_data_perim %>% 
+  #filter(YEAR_ == 2022) %>% 
+  #st_union() %>% #this eliminates the issue st_simplify was having with tiny polygons
+  #t_make_valid() %>% 
+  #st_simplify(dTolerance = 200) %>% 
+  #st_transform(crs = "+proj=longlat +datum=WGS84") #needed for projecting on leaflet
+
+#create ggplot
+ggplot()+
+  #color the objects
+  geom_sf(data = fire_data_2016, fill = "#454742", col = "#8d8c8b", size = .5)+
+  #create the theme for the background. I'm reusing an old theme
+  theme(panel.background = element_rect(fill = "#272727",
+                                        colour = "#272727",
+                                        size = .5,
+                                        linetype = "dashed"),
+        panel.grid.major = element_line(size = .5,
+                                        color = "#3d3d3d",
+                                        linetype = "solid"))+
+  #title and subtitle. I might need another legend position for credits.
+  theme(legend.position = "hide")+
+    labs(title = "TITLE",
+         subtitle = "SUBTITLE",
+         x = "",
+         y ="")
+
+```
+
+
+Now that the fire data is tidy and ready for the map, I'll tidy up the precip data
+
+ -  I'm back, having just finished getting the ms_simplify to work. I might need
+    to cast the as something else to make leaflet accept them cause the ms_simplify
+    left them as different data types, but it should be usable.
+    
+    Turns out, that I forgot to take out the union which was the reason for the
+    different types.
+
+
+```{r}
+#do I need raster libraries
+library(raster)
+library(rasterVis)
+library(ggplot2)
+
+#first get the us boundary CA state poly
+ca_state_poly <- us_boundaries(states = "California")
+
+
+#now get the precip data
+GDALinfo("../data/nws_precip_ytd_20220101_conus.tif")
+precipitation_conus_path <- "../data/nws_precip_ytd_20220101_conus.tif"
+
+#yearly precip paths
+#the date on the tif file is the 1st of the next year, when the data was presumably compiled
+#2016
+precip_2016_path <- "../data/raw_precip_data/nws_precip_ytd_20170101_geotiff_year_2016/nws_precip_ytd_20170101_conus.tif"
+
+#2017
+precip_2017_path <- "../data/raw_precip_data/nws_precip_ytd_20180101_geotiff_year_2017/nws_precip_ytd_20180101_conus.tif"
+
+#2018
+precip_2018_path <- "../data/raw_precip_data/nws_precip_ytd_20190101_geotiff_year_2018/nws_precip_ytd_20190101_conus.tif"
+
+#2019
+precip_2019_path <- "../data/raw_precip_data/nws_precip_ytd_20200101_geotiff_year_2019/nws_precip_ytd_20200101_conus.tif"
+
+#2020
+precip_2020_path <- "../data/raw_precip_data/nws_precip_ytd_20210101_geotiff_year_2020/nws_precip_ytd_20210101_conus.tif"
+
+#2021
+precip_2021_path <- "../data/raw_precip_data/nws_precip_ytd_20220101_geotiff_year_2021/nws_precip_ytd_20220101_conus.tif"
+
+
+#create the raster 2022 rainfall
+precip_conus <- raster(precipitation_conus_path, band = 2) %>% 
+  projectRaster(crs = 4326) %>% 
+  #crop california data
+  #crop(ca_state_poly) %>% 
+  #select only cali borders
+  raster::intersect(ca_state_poly) %>% 
+  #mask the state polygon
+  raster::mask(ca_state_poly) %>% 
+  #convert to pts
+  rasterToPoints(spatial = TRUE) %>% 
+  #then to df
+  data.frame()
+  
+
+#create the raster for leaflet
+precip_conus_leaf <- raster(precipitation_conus_path, band = 2) %>% 
+  projectRaster(crs = 4326) %>% 
+  #crop california data
+  #crop(ca_state_poly) %>% 
+  #select only cali borders
+  raster::intersect(ca_state_poly) %>% 
+  #mask the state polygon
+  raster::mask(ca_state_poly)
+
+#rasters by year for the leaflet map 
+precip_2016 <- raster(precip_2016_path, band = 2) %>% #band 2 has the precip data in inches
+  projectRaster(crs = 4326) %>% #wgs 84 prjections
+  raster::intersect(ca_state_poly) %>% #select only cali state extent
+  raster::mask(ca_state_poly) #mask only the california data
+
+precip_2017 <- raster(precip_2017_path, band = 2) %>% #band 2 has the precip data in inches
+  projectRaster(crs = 4326) %>% #wgs 84 prjections
+  raster::intersect(ca_state_poly) %>% #select only cali state extent
+  raster::mask(ca_state_poly) #mask only the california data
+
+precip_2018 <- raster(precip_2018_path, band = 2) %>% #band 2 has the precip data in inches
+  projectRaster(crs = 4326) %>% #wgs 84 prjections
+  raster::intersect(ca_state_poly) %>% #select only cali state extent
+  raster::mask(ca_state_poly) #mask only the california data
+
+precip_2019 <- raster(precip_2019_path, band = 2) %>% #band 2 has the precip data in inches
+  projectRaster(crs = 4326) %>% #wgs 84 prjections
+  raster::intersect(ca_state_poly) %>% #select only cali state extent
+  raster::mask(ca_state_poly) #mask only the california data
+
+precip_2020 <- raster(precip_2020_path, band = 2) %>% #band 2 has the precip data in inches
+  projectRaster(crs = 4326) %>% #wgs 84 prjections
+  raster::intersect(ca_state_poly) %>% #select only cali state extent
+  raster::mask(ca_state_poly) #mask only the california data
+
+precip_2021 <- raster(precip_2021_path, band = 2) %>% #band 2 has the precip data in inches
+  projectRaster(crs = 4326) %>% #wgs 84 prjections
+  raster::intersect(ca_state_poly) %>% #select only cali state extent
+  raster::mask(ca_state_poly) #mask only the california data
+
+ggplot()+
+  #color the objects
+  geom_sf(data = ca_state_poly, fill = "#454742", col = "#8d8c8b", size = .5)+
+  #create the theme for the background. I'm reusing an old theme
+  theme(panel.background = element_rect(fill = "#272727",
+                                        colour = "#272727",
+                                        size = .5,
+                                        linetype = "dashed"),
+        panel.grid.major = element_line(size = .5,
+                                        color = "#3d3d3d",
+                                        linetype = "solid"))+
+  #title and subtitle. I might need another legend position for credits.
+  geom_raster(data = precip_conus, aes(x=x, y=y, fill = nws_precip_ytd_20220101_conus))+
+  scale_fill_gradientn(colors = c("#fff8bf", "#6e6a4b",  "#141b57", "#000724"))+
+  theme(legend.position = "hide")+
+    labs(title = "TITLE",
+         subtitle = "SUBTITLE",
+         x = "",
+         y ="")
+
+```
+
+FINALLY!!!! I had to use the raster::mask fuction to do what I wanted cause
+raster::intersect only selected by the extent, either way, I have the tidy raster
+data I was looking for. The next step should be setting up the leaflet map. I
+think the best way to go about this will be to create the leaflet map I want in
+this RMD, but then create a new RMD that will be cleaner and just show the 
+leaflet map and have this rmd in a different folder showing my process.
+
+
+I'm going to make a chunk to work on the graphs here
+
+so the graph I want is going to be a graph of the calculated yearly number of
+people who are 'affected' by fires by selecting counties with large fires in them
+or many small fires. I'm gonna need to start by just simply selecting fires based
+on size and figure out the smaller fires issue later.
+
+```{r}
+#select fires based on size
+
+#might need specific county
+cali_counties_sonoma <- cali_counties_final %>% 
+  filter(county_name == "Sonoma") %>% 
+  st_make_valid()
+
+#let's see what the raw fire data has that could help me
+fire_data_select_test <- fire_data_2017 %>% #okay, from here I'm going to try to add a column containing the county names the fire intersects
+  st_transform(crs = "+proj=longlat +datum=WGS84") %>%
+  st_make_valid() %>% #had to make the fire data clean because of the conversion from geos to s2 and duplicate points
+  st_intersection(cali_counties_sonoma)
+  
+
+ggplot()+
+  #color the cali counties and their borders
+  geom_sf(data = cali_counties_sonoma, fill = "#454742", col = "#8d8c8b", size = .5)+
+  #create the theme for the background. I'm reusing an old theme
+  theme(panel.background = element_rect(fill = "#272727",
+                                        colour = "#272727",
+                                        size = .5,
+                                        linetype = "dashed"),
+        panel.grid.major = element_line(size = .5,
+                                        color = "#3d3d3d",
+                                        linetype = "solid"))+
+  #title and subtitle. I might need another legend position for credits.
+  geom_sf(data = fire_data_select_test, fill= "red", col = "red")#check the fire data
+  theme(legend.position = "hide")+
+    labs(title = "TITLE",
+         subtitle = "SUBTITLE",
+         x = "",
+         y ="")
+
+```
+
+Okay, so that works with just a singular county, but does it work with all counties?
+
+```{r}
+#select fires based on size
+
+#might need specific county
+cali_counties_valid <- cali_counties_final %>% 
+  st_make_valid()
+
+#need to strip the geometry from counties for joining
+counties_mini_test <- cali_counties_valid %>% 
+  mutate(county_area = st_area(cali_counties_valid$geometry)) %>% 
+  as.data.frame() %>% 
+  dplyr::select(county_name, county_population, county_area)
+
+#let's see what the raw fire data has that could help me
+fire_data_select_test_full <- fire_data_2020 %>% #okay, from here I'm going to try to add a column containing the county names the fire intersects
+  st_transform(crs = "+proj=longlat +datum=WGS84") %>%
+  st_make_valid() %>% #had to make the fire data clean because of the conversion from geos to s2 and duplicate points
+  st_intersection(cali_counties_valid) %>% #okay, so this gave me what I wanted, it attached the county name and population count to the fires
+  group_by(county_name) %>% #group the fires by county name so I can operate on them
+  summarize(geometry = st_union(geometry)) %>% #summarize is being weird, but I can just add the county pop after
+  left_join(counties_mini_test, by = c('county_name' = 'county_name')) %>%  #okay, hopefully, geometry not being the last column isn't a problem
+  # 2020 data error: Loop 5 is not valid: Edge 14 is degenerate (duplicate vertex)
+  st_make_valid() %>% #have to call again because the prior steps after make_valid can mess stuff up
+
+  mutate(fire_area = st_area(geometry)) %>%  #add fire area
+  mutate(fire_coverage = as.numeric(fire_area/county_area)*100) %>%  #percentage of county area covered by fires
+  mutate(fire_impacted = ifelse(fire_coverage > 1, "impacted", "not impacted")) %>% 
+  group_by(fire_impacted) %>% 
+  summarize(impacted_pop = sum(as.numeric(county_population))) #now I have the number of impacted people in the impacted_pop column
+  
+#I think I'm going to judge that any county where over 1% of the county area was covered by fires contitutes the county being
+#'impacted by wildfires' for the purposes of this qualitiative analysis. I could also say that about 8% is 'seriously impacted'
+#since that's about the fire coverage for sonoma county in 2017.
+
+#okay, I've got a column of impacted fires, next step will be figuring out how I want to put it in the leaflet map.
+
+#the next step is to create a function to automate the impact plot thing and create a data frame with
+#year on the x-axis and impacted_pop on the y-axis for the ggplot.
+
+   
+  
+
+plot(fire_data_select_test_full)
+
+
+test_graph <- ggplot()+
+  #color the cali counties and their borders
+  geom_sf(data = cali_counties_valid, fill = "#454742", col = "#8d8c8b", size = .5)+
+  #create the theme for the background. I'm reusing an old theme
+  theme(panel.background = element_rect(fill = "#272727",
+                                        colour = "#272727",
+                                        size = .5,
+                                        linetype = "dashed"),
+        panel.grid.major = element_line(size = .5,
+                                        color = "#3d3d3d",
+                                        linetype = "solid"))+
+  #title and subtitle. I might need another legend position for credits.
+  geom_sf(data = fire_data_select_test_full, fill= "red", col = "red")#check the fire data
+  theme(legend.position = "hide")+
+    labs(title = "TITLE",
+         subtitle = "SUBTITLE",
+         x = "",
+         y ="")
+```
+  
+  
+Before I make the graph in ggplot, I need to assemble the dataframe that holds the year and pop data
+
+```{r}
+#create a function to find the impacted pop
+find_impacted_pop <- function(fire_data_func){
+  
+  impacted_pop_func <- fire_data_func %>% 
+    st_transform(crs = "+proj=longlat +datum=WGS84") %>%
+  
+    st_make_valid() %>% #had to make the fire data clean because of the conversion from geos to s2 and duplicate points
+    st_intersection(cali_counties_valid) %>% #okay, so this gave me what I wanted, it attached the county name and population count to the fires
+    group_by(county_name) %>% #group the fires by county name so I can operate on them
+    summarize(geometry = st_union(geometry)) %>% #summarize is being weird, but I can just add the county pop after
+    left_join(counties_mini_test, by = c('county_name' = 'county_name')) %>%  #okay, hopefully, geometry not being the last column isn't a problem
+    st_make_valid() %>% #call again to clean up before st_area
+    mutate(fire_area = st_area(geometry)) %>%  #add fire area
+    mutate(fire_coverage = as.numeric(fire_area/county_area)*100) %>%  #percentage of county area covered by fires
+    mutate(fire_impacted = ifelse(fire_coverage > 1, "impacted", "not impacted")) %>% 
+    group_by(fire_impacted) %>% 
+    summarize(impacted_pop = sum(as.numeric(county_population)))
+    
+  return(impacted_pop_func)
+}
+
+#run each year through the function
+fire_impacted_2016 <- find_impacted_pop(fire_data_2016)
+fire_impacted_2017 <- find_impacted_pop(fire_data_2017)
+fire_impacted_2018 <- find_impacted_pop(fire_data_2018)
+fire_impacted_2019 <- find_impacted_pop(fire_data_2019)
+fire_impacted_2020 <- find_impacted_pop(fire_data_2020) #problem with this one
+fire_impacted_2021 <- find_impacted_pop(fire_data_2021)
+
+#assemble the data frame with year and pop impacted
+impacted_population_df <- data.frame(
+  YEAR = c("2016","2017","2018","2019", "2020", "2021"),
+  IMPACTED = c(fire_impacted_2016$impacted_pop[1],
+               fire_impacted_2017$impacted_pop[1],
+               fire_impacted_2018$impacted_pop[1],
+               fire_impacted_2019$impacted_pop[1],
+               fire_impacted_2020$impacted_pop[1],
+               fire_impacted_2021$impacted_pop[1])
+)
+
+
+```
+  
+Now I'm going to work on the graph itself.
+  
+```{r}  
+
+
+library(scales)
+options(scipen = 999)
+  
+impact_graph <- ggplot(data = impacted_population_df, aes(x = YEAR, y = IMPACTED))+
+  geom_col(col = "#ff6400", fill = "#ff6400")+
+  labs(title = "People Impacted by Wildfires",
+       x = "Year",
+       y = "Impacted Population",
+       subtitle = "Counties with over 1% fire area coverage considered impacted.") +
+  scale_y_continuous(labels = scales::label_number_si())+
+  theme_minimal()+
+  theme(axis.text = element_text(face="bold", size = rel(2)),
+        axis.title = element_text(face="bold", size = rel(1)),
+        title = element_text(face="bold", size = rel(2)),
+        axis.ticks = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.major.y = element_line(color = "black"),
+        panel.grid.minor.y = element_line(color = "grey"),
+        plot.subtitle = element_text(size = rel(.55))
+        )
+  
+
+impact_graph
+
+```
+
+
+```{r}
+#time to try the leaflet map
+library(leaflet)
+library(leaflet.extras)
+library(leafpop)
+
+
+#html code and stuff to display the county info
+county_popup_text <- paste("<div class='leaflet-popup-scrolled' style='max-width:600px;max-height:300px'><b>",
+                           
+                           '  <h2 align="center"><strong>', cali_counties_final$county_name, "</strong></h2></a><br>",
+               "</b>",
+               
+               ' <b>County Population: </b> ',
+                           
+                            cali_counties_final$county_population,'<br><br><center><img src="')
+
+
+graph_icon <- makeIcon(iconUrl = "../data/bar-chart-outline.svg", 
+                       iconWidth = 50,
+                       iconHeight = 50)
+
+
+
+
+map = leaflet() %>%
+  addTiles(group = "OSM") %>% #open street map baselayer
+  addProviderTiles(providers$CartoDB.Positron, group = "Carto Light") %>% #cartodb light basemap
+  addProviderTiles(providers$CartoDB.DarkMatter, group = "Carto Dark") %>%  #carto db dark basemap
+  addPolygons(data = cali_counties_final, 
+              fillOpacity = 0, 
+              weight = 1, 
+              color = "grey", 
+              group = "County Borders",
+              popup = county_popup_text) %>% #county border polys
+  
+
+  
+  addPolygons(data = ca_places_bound, 
+              color = "grey", 
+              fillOpacity = .4, 
+              weight = 0, 
+              group = "Pop Centers",
+              popup = ca_places_bound$NAMELSAD) %>% 
+  
+  #2016 fires
+  addRasterImage(x = precip_2016, 
+                 opacity = .5, 
+                 colors = c("#fff8bf", "#6e6a4b",  "#141b57", "#000724"), 
+                 group = "Fires in 2016") %>% 
+  addPolygons(data = fire_data_2016, 
+              opacity = .5, 
+              color = "red", 
+              group = "Fires in 2016",
+              popup = fire_data_2016$FIRE_NAME) %>% 
+  
+  #2017 fires
+  addRasterImage(x = precip_2017, 
+                 opacity = .5, 
+                 colors = c("#fff8bf", "#6e6a4b",  "#141b57", "#000724"), 
+                 group = "Fires in 2017") %>% 
+  addPolygons(data = fire_data_2017, 
+              opacity = .5, 
+              color = "red", 
+              group = "Fires in 2017",
+              popup = fire_data_2017$FIRE_NAME) %>% 
+  
+  #2018 fires
+  addRasterImage(x = precip_2018, 
+                 opacity = .5, 
+                 colors = c("#fff8bf", "#6e6a4b",  "#141b57", "#000724"), 
+                 group = "Fires in 2018") %>% 
+  addPolygons(data = fire_data_2018, 
+              opacity = .5, 
+              color = "red", 
+              group = "Fires in 2018",
+              popup = fire_data_2018$FIRE_NAME) %>% 
+  
+  #2019 fires
+  addRasterImage(x = precip_2019, 
+                 opacity = .5, 
+                 colors = c("#fff8bf", "#6e6a4b",  "#141b57", "#000724"), 
+                 group = "Fires in 2019") %>% 
+  addPolygons(data = fire_data_2019, 
+              opacity = .5, 
+              color = "red", 
+              group = "Fires in 2019",
+              popup = fire_data_2019$FIRE_NAME) %>% 
+  
+  #2020 fires
+  addRasterImage(x = precip_2020, 
+                 opacity = .5, 
+                 colors = c("#fff8bf", "#6e6a4b",  "#141b57", "#000724"), 
+                 group = "Fires in 2020") %>% 
+  addPolygons(data = fire_data_2020, 
+              opacity = .5, 
+              color = "red", 
+              group = "Fires in 2020",
+              popup = fire_data_2020$FIRE_NAME) %>% 
+  
+  #2021 fires
+  addRasterImage(x = precip_2021, 
+                 opacity = .5, 
+                 colors = c("#fff8bf", "#6e6a4b",  "#141b57", "#000724"), 
+                 group = "Fires in 2021") %>% 
+  addPolygons(data = fire_data_2021, 
+              opacity = .5, 
+              color = "red", 
+              group = "Fires in 2021",
+              popup = fire_data_2021$FIRE_NAME) %>% 
+
+  #layer controls
+  addLayersControl(
+    baseGroups = c("OSM", "Carto Light", "Carto Dark"),
+    overlayGroups = c("County Borders", 
+                      "Precipitation",
+                      "Pop Centers",
+                      "Fires in 2016",
+                      "Fires in 2017",
+                      "Fires in 2018",
+                      "Fires in 2019",
+                      "Fires in 2020",
+                      "Fires in 2021"),
+    options = layersControlOptions(collapsed = FALSE)
+  ) %>% 
+  #create legend
+  addLegend(position = "bottomleft", 
+            colors = c("#fff8bf", "#6e6a4b",  "#141b57", "#000724"), 
+            labels = c("Low Rainfall", "", "", "High Rainfall"), 
+            group = "Legend") %>% 
+  addSearchOSM() %>% 
+  addFullscreenControl() %>% 
+  hideGroup("Fires in 2016") %>% 
+  hideGroup("Fires in 2017") %>% 
+  hideGroup("Fires in 2018") %>% 
+  hideGroup("Fires in 2019") %>% 
+  hideGroup("Fires in 2020") %>% 
+  addMiniMap() %>% 
+  addMarkers(lng=-117, lat=39, popup = popupGraph(impact_graph, width = 450, height = 300), icon = graph_icon)
+  
+  
+  #implementation: https://rdrr.io/github/r-spatial/leafpop/man/addPopupGraphs.html
+  #I still need to make the actual data for the graph first
+  #addPopupGraphs()
+  #I decided to just use a ggplot and put it in a popup
+  
+  
+
+map
+
+
+```
+
+Okay, great, this map is looking pretty mediocre, I can worry more about the
+aesthetics later, for now I have the most base layer finished. Now I have to
+figure out how to make an interactive switching map.
+
+Right, so now I'm just remembering that I only processed the precipitation raster
+for 2022, so now I need to go back up and finish processing all the year layers.
+
+Alrighty, so the map itself is done, now I just need to make the graphs.
+
+Welp, it's done now. I have more ideas of what I could add to the map, but at this
+point, I think it's about time to move on to other things. I could add different
+colors to the counties based on whether the county is 'impacted' but that's not
+really necessary and this map is already detailed enough. I'm happy with the outcome
+and if I were given this map as a task to complete it would certainly be ready for
+review by the client so I'm going to leave it in the state it's in now.
+
+The next step is to duplicate this rmd and remove all of the unnecessary bits of
+code and commentary so that I can turn it into a nice webpage for my website. This
+rmd will likely be linked as a 'journal' of sorts, documenting my creation process
+as I built this map from scratch.
+
+
+
+
+

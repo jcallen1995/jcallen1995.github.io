@@ -11,7 +11,7 @@ title: "About me"
 </center>
 
 <center>
-I am a GIS designer with experience using ESRI software and R code to analyze data and create maps. I have worked on a number of projects at university including the [NASA Big Idea Challenge 2021](http://bigidea.nianet.org/2021-challenge/) recently where I helped with research and graphics.
+I am a GIS designer with experience using ESRI software and R code to analyze data and create maps. I worked at [Sonoma County GIS](https://gis-sonomacounty.hub.arcgis.com/) as an intern for a year and a half where I polished my GIS skills.
 
-This website will be a showcase of my work with geospatial analysis over the course of my time at UCSB.
+This website will be a showcase of my work with geospatial analysis and GIS work over the last 2 years.
 </center>
