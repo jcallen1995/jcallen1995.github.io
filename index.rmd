@@ -1,6 +1,29 @@
 ---
 title: "About me"
+
+author: "Author"
+
+output: 
+  html_document:
+    css: style.css
+    toc: FALSE
+    includes:
+      before_body: header.html
 ---
+
+<br><br>
+
+<div class="mycontent">
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{css, echo = FALSE}
+h1, h2, h3, h4 {
+  text-align: center;
+}
+```
 
 <center>
 ![](./img/IMG_2492.jpg){width=30%}
