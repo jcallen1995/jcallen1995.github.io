@@ -1,7 +1,7 @@
 ---
 title: "About me"
 
-author: "Author"
+author: "Jason Allen"
 
 output: 
   html_document:
