@@ -8,7 +8,7 @@
 
 /* Then we place our content with this style because we don't want it to be full width */
 .mycontent{
-      max-width: 900px;
+      max-width: 900px !important;
       margin-left: auto;
       margin-right: auto;
       font-family: 'Montserrat';

@@ -1,7 +1,5 @@
 ---
-title: "About me"
-
-author: "Jason Allen"
+title: "Hi, I'm Jason Allen"
 
 output: 
   html_document:
@@ -14,6 +12,8 @@ output:
 <br><br>
 
 <div class="mycontent">
+
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -29,12 +29,62 @@ h1, h2, h3, h4 {
 ![](./img/IMG_2492.jpg){width=30%}
 </center>
 
-<center>
-# Hi, I'm Jason Allen
-</center>
+
 
 <center>
-I am a GIS designer with experience using ESRI software and R code to analyze data and create maps. I worked at [Sonoma County GIS](https://gis-sonomacounty.hub.arcgis.com/) as an intern for a year and a half where I polished my GIS skills.
-
-This website will be a showcase of my work with geospatial analysis and GIS work over the last 2 years.
+# About Me
 </center>
+
+<hr style="width:30%">
+
+<br>
+
+<center>
+I am a GIS designer with experience using ESRI software and R code to analyze data and create maps. I worked at <br>
+[Sonoma County GIS](https://gis-sonomacounty.hub.arcgis.com/) as an intern for a year and a half where I polished my GIS skills.
+</center>
+
+<br>
+
+
+
+
+<center>
+
+
+<div class="mycontent">
+
+# My Work
+
+</center>
+
+
+<hr style="width:30%">
+
+
+<br><br>
+
+
+
+<br>
+
+<a href="https://gis-sonomacounty.hub.arcgis.com/"><img style="float: left;" src="./img/sonoma-gis.png" width="200"></a>
+
+<p style="margin-left: 250px">
+<font size="+2"><left>
+Sonoma County GIS
+</left></font>
+</p>
+
+<p style="margin-left: 250px">
+I was lucky enough to get an internship at Sonoma County GIS which allowed me to experience what working as a GIS technician was like at a professional level. I was also able to learn a lot about the interaction between us and our clients by sitting in on important meetings.
+</p>
+
+
+
+
+<br><br><br><br>
+
+
+
+****

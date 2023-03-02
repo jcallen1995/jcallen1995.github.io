@@ -1,8 +1,10 @@
 ---
 title: "Projects"
 ---
+<br>
 
 # Fire Map Project 2023
+<br>
 In order to update my personal website so that I can use it as a portfolio for my
 resume, I created a map using all the R coding techniques I learned 2 years ago
 so that my R skills were refreshed and up to date.
@@ -12,11 +14,14 @@ so that my R skills were refreshed and up to date.
 # [<i class="fas fa-book"></i> Fire Map 2023](./geog13/docs/fire_map_website.html)
 ![](./geog13/img/fire-map-2023.png){width=20%}  
 
+<br><br>
 
 # School Projects 2021
 
 The final lab for my maps and spatial reasoning course was creating this website 
 and publishing all of my class labs in it.
+
+<br>
 
 ****  
 
